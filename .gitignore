@@ -2,4 +2,4 @@ node_modules/
 .chrome-profile/
 screenshots/
 test-results/
-native-host/clipboard_helper
+native-host/__pycache__/

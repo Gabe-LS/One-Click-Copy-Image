@@ -3,11 +3,11 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 HOST_NAME="com.occi.clipboard_helper"
-BINARY="$SCRIPT_DIR/native-host/clipboard_helper"
+BINARY="$SCRIPT_DIR/native-host/clipboard_helper.py"
 
 if [ ! -f "$BINARY" ]; then
-  echo "Building native helper..."
-  swiftc -O -o "$BINARY" "$SCRIPT_DIR/native-host/clipboard_helper.swift"
+  echo "Error: $BINARY not found"
+  exit 1
 fi
 
 EXT_ID="${1:-}"
@@ -67,12 +67,10 @@ if [ "$INSTALLED" -eq 0 ]; then
   mkdir -p "$MANIFEST_DIR"
   echo "$MANIFEST_CONTENT" > "$MANIFEST_DIR/$HOST_NAME.json"
   echo "  Installed for Google Chrome (default)"
-  INSTALLED=1
 fi
 
 echo ""
-echo "Binary: $BINARY"
+echo "Helper: $BINARY"
 echo "Extension ID: $EXT_ID"
-echo "Browsers: $INSTALLED"
 echo ""
 echo "Restart your browser to pick up the change."

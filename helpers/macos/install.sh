@@ -101,8 +101,30 @@ install() {
     echo "  Installed for Chrome (default)"
   fi
 
+  # Drop a standalone uninstall script so the user doesn't need
+  # to keep the downloaded zip around.
+  cat > "$INSTALL_DIR/uninstall.sh" << 'UNINSTALL'
+#!/bin/bash
+set -euo pipefail
+HOST_NAME="com.occi.clipboard_helper"
+INSTALL_DIR="$HOME/.occi"
+BROWSERS=(
+  "Google/Chrome" "Google/Chrome Canary" "BraveSoftware/Brave-Browser"
+  "Microsoft Edge" "Vivaldi" "Arc/User Data" "Chromium"
+)
+echo "Uninstalling One-Click Copy Image GIF helper..."
+for b in "${BROWSERS[@]}"; do
+  rm -f "$HOME/Library/Application Support/$b/NativeMessagingHosts/$HOST_NAME.json"
+done
+rm -rf "$INSTALL_DIR"
+echo "Done. Restart your browser."
+UNINSTALL
+  chmod +x "$INSTALL_DIR/uninstall.sh"
+
   echo ""
   echo "Done! Restart your browser to activate."
+  echo ""
+  echo "To uninstall later, run:  ~/.occi/uninstall.sh"
 }
 
 case "${1:-}" in

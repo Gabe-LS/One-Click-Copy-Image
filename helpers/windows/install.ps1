@@ -120,8 +120,34 @@ function Do-Install {
         Write-Host "  Installed for Chrome (default)"
     }
 
+    # Drop a standalone uninstall script
+    $uninstallScript = @'
+$HostName = "com.occi.clipboard_helper"
+$InstallDir = "$env:LOCALAPPDATA\occi"
+Write-Host "Uninstalling One-Click Copy Image GIF helper..."
+$regPaths = @(
+    "HKCU:\Software\Google\Chrome\NativeMessagingHosts\$HostName"
+    "HKCU:\Software\BraveSoftware\Brave-Browser\NativeMessagingHosts\$HostName"
+    "HKCU:\Software\Microsoft\Edge\NativeMessagingHosts\$HostName"
+    "HKCU:\Software\Vivaldi\NativeMessagingHosts\$HostName"
+    "HKCU:\Software\Chromium\NativeMessagingHosts\$HostName"
+)
+foreach ($r in $regPaths) { if (Test-Path $r) { Remove-Item $r -Force } }
+$dirs = @(
+    "$env:LOCALAPPDATA\Google\Chrome\User Data\NativeMessagingHosts"
+    "$env:LOCALAPPDATA\BraveSoftware\Brave-Browser\User Data\NativeMessagingHosts"
+    "$env:LOCALAPPDATA\Microsoft\Edge\User Data\NativeMessagingHosts"
+)
+foreach ($d in $dirs) { Remove-Item "$d\$HostName.json" -ErrorAction SilentlyContinue }
+if (Test-Path $InstallDir) { Remove-Item $InstallDir -Recurse -Force }
+Write-Host "Done. Restart your browser."
+'@
+    Set-Content "$InstallDir\uninstall.ps1" $uninstallScript -Encoding UTF8
+
     Write-Host ""
     Write-Host "Done! Restart your browser to activate."
+    Write-Host ""
+    Write-Host "To uninstall later, run:  powershell $InstallDir\uninstall.ps1"
 }
 
 if ($Uninstall) {

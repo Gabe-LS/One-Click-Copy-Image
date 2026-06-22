@@ -56,10 +56,10 @@ By default, animated GIFs are downloaded because browsers can't copy them to the
 ./install.sh YOUR_EXTENSION_ID
 ```
 
-No admin password needed. To remove it later:
+No admin password needed. To uninstall later:
 
 ```bash
-./install.sh --uninstall
+~/.occi/uninstall.sh
 ```
 
 ### Windows
@@ -73,10 +73,10 @@ No admin password needed. To remove it later:
 .\install.ps1 -ExtensionId YOUR_EXTENSION_ID
 ```
 
-No admin needed. To remove it later:
+No admin needed. To uninstall later:
 
 ```powershell
-.\install.ps1 -Uninstall
+powershell "$env:LOCALAPPDATA\occi\uninstall.ps1"
 ```
 
 ### How to find your extension ID

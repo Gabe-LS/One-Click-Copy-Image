@@ -199,7 +199,6 @@
         } catch {}
       }
 
-      // Background fetch path (bypasses CORS, detects GIFs)
       const response = await chrome.runtime.sendMessage({ action: "fetchImage", src });
 
       if (!response?.success) throw new Error(response?.error || "Fetch failed");

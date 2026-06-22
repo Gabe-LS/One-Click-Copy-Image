@@ -1,0 +1,51 @@
+import AppKit
+import Foundation
+
+func readMessage() -> [String: Any]? {
+    let handle = FileHandle.standardInput
+    let lengthData = handle.readData(ofLength: 4)
+    guard lengthData.count == 4 else { return nil }
+    let length = lengthData.withUnsafeBytes { $0.load(as: UInt32.self) }
+    guard length > 0, length < 50_000_000 else { return nil }
+    let msgData = handle.readData(ofLength: Int(length))
+    guard msgData.count == Int(length) else { return nil }
+    return try? JSONSerialization.jsonObject(with: msgData) as? [String: Any]
+}
+
+func sendMessage(_ dict: [String: Any]) {
+    guard let data = try? JSONSerialization.data(withJSONObject: dict) else { return }
+    var length = UInt32(data.count)
+    let lengthData = Data(bytes: &length, count: 4)
+    FileHandle.standardOutput.write(lengthData)
+    FileHandle.standardOutput.write(data)
+}
+
+func copyGifToClipboard(base64: String) -> Bool {
+    guard let data = Data(base64Encoded: base64) else { return false }
+
+    let gifType = NSPasteboard.PasteboardType("com.compuserve.gif")
+    let pb = NSPasteboard.general
+    pb.clearContents()
+
+    if let image = NSImage(data: data), let tiff = image.tiffRepresentation {
+        pb.declareTypes([gifType, .tiff], owner: nil)
+        pb.setData(data, forType: gifType)
+        pb.setData(tiff, forType: .tiff)
+    } else {
+        pb.declareTypes([gifType], owner: nil)
+        pb.setData(data, forType: gifType)
+    }
+
+    return true
+}
+
+guard let msg = readMessage(), let action = msg["action"] as? String else {
+    sendMessage(["success": false, "error": "Invalid message"])
+    exit(1)
+}
+
+if action == "copyGif", let base64 = msg["base64"] as? String {
+    sendMessage(["success": copyGifToClipboard(base64: base64)])
+} else {
+    sendMessage(["success": false, "error": "Unknown action or missing data"])
+}

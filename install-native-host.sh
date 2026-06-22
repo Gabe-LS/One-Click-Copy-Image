@@ -3,12 +3,13 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 HOST_NAME="com.occi.clipboard_helper"
-BINARY="$SCRIPT_DIR/native-host/clipboard_helper.py"
+INSTALL_DIR="/usr/local/bin"
+BINARY="$INSTALL_DIR/occi-clipboard-helper"
+SOURCE="$SCRIPT_DIR/native-host/clipboard_helper.swift"
 
-if [ ! -f "$BINARY" ]; then
-  echo "Error: $BINARY not found"
-  exit 1
-fi
+# Build
+echo "Building native helper..."
+swiftc -O -o "$BINARY" "$SOURCE"
 
 EXT_ID="${1:-}"
 if [ -z "$EXT_ID" ]; then
@@ -38,6 +39,8 @@ MANIFEST_CONTENT="{
 
 INSTALLED=0
 
+# Brave reads from Chrome's NativeMessagingHosts directory,
+# so install there for all browsers.
 BROWSERS=(
   "Google/Chrome:Google Chrome"
   "Google/Chrome Canary:Chrome Canary"
@@ -70,7 +73,7 @@ if [ "$INSTALLED" -eq 0 ]; then
 fi
 
 echo ""
-echo "Helper: $BINARY"
+echo "Binary: $BINARY"
 echo "Extension ID: $EXT_ID"
 echo ""
 echo "Restart your browser to pick up the change."

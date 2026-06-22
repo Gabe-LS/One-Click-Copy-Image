@@ -1,32 +1,60 @@
 # One-Click Copy Image
 
-Chrome/Brave/Edge extension that adds a **Copy** button to Google Images preview panels. Click it to copy the full-resolution image to your clipboard.
+A browser extension that adds a **Copy** button to Google Images. Click any image result, and a button appears on the preview — one click copies it to your clipboard, ready to paste.
 
-- **Static images** (JPEG, PNG, WebP) are copied as PNG
-- **Animated GIFs** are copied with animation preserved (requires a small native helper) or downloaded as a fallback
+**Static images** (JPEG, PNG, WebP) are copied instantly. **Animated GIFs** can be copied with animation preserved if you install a small optional helper (see below).
 
-Works on 48 Google country domains.
+Works with Chrome, Brave, Edge, and other Chromium-based browsers.
 
-## Install the extension
+## Installation
 
-1. Clone this repo
-2. Open `chrome://extensions` (or `brave://extensions`, `edge://extensions`)
-3. Enable **Developer mode**
-4. Click **Load unpacked** and select the `extension/` folder
+### Option 1: Download (easiest)
+
+1. Go to the [latest release](https://github.com/Gabe-LS/One-Click-Copy-Image/releases/latest)
+2. Download the **Source code (zip)** and unzip it
+3. Open your browser's extensions page:
+   - Chrome: type `chrome://extensions` in the address bar
+   - Brave: type `brave://extensions`
+   - Edge: type `edge://extensions`
+4. Turn on **Developer mode** (toggle in the top-right corner)
+5. Click **Load unpacked**
+6. Select the `extension` folder inside the unzipped download
+
+The extension icon should appear in your toolbar.
+
+### Option 2: Clone with Git
+
+```bash
+git clone https://github.com/Gabe-LS/One-Click-Copy-Image.git
+```
+
+Then follow steps 3-6 above.
+
+## Usage
+
+1. Go to [Google Images](https://images.google.com) and search for something
+2. Click on any image result — a larger preview opens on the right
+3. A **Copy** button appears on the preview image
+4. Click it — a green progress bar fills the button while it works
+5. The button turns solid green when the image is on your clipboard
+6. Paste anywhere (Cmd+V / Ctrl+V)
+
+**For animated GIFs:** Without the optional helper below, GIFs are saved to your Downloads folder instead of copied to the clipboard. The button still turns green — check your Downloads.
 
 ## Animated GIF clipboard support (optional)
 
-The browser Clipboard API only supports static `image/png`. To copy animated GIFs to the clipboard with animation preserved, install the native helper for your platform.
+By default, animated GIFs are downloaded because browsers can't copy them to the clipboard natively. To enable true clipboard copy (so you can paste animated GIFs directly), install the helper for your platform:
 
 ### macOS
 
+Open Terminal and run:
+
 ```bash
-./install-macos.sh <extension-id>
+cd path/to/One-Click-Copy-Image
+./install-macos.sh YOUR_EXTENSION_ID
 ```
 
-Uses `bash` + `osascript` (built into every Mac). Installs to `~/.occi/`. No compilation, no sudo.
-
-To uninstall:
+No admin password needed. To remove it later:
 
 ```bash
 ./install-macos.sh --uninstall
@@ -34,35 +62,33 @@ To uninstall:
 
 ### Windows
 
+Open PowerShell and run:
+
 ```powershell
-.\install-windows.ps1 -ExtensionId <extension-id>
+cd path\to\One-Click-Copy-Image
+.\install-windows.ps1 -ExtensionId YOUR_EXTENSION_ID
 ```
 
-Uses PowerShell + .NET (built into Windows 10+). Installs to `%LOCALAPPDATA%\occi\`. No admin.
-
-To uninstall:
+No admin needed. To remove it later:
 
 ```powershell
 .\install-windows.ps1 -Uninstall
 ```
 
-### Finding your extension ID
+### How to find your extension ID
 
-1. Open `chrome://extensions` (or your browser's equivalent)
-2. Find **One-Click Copy Image**
-3. The ID is the 32-character string under the name
+1. Open `chrome://extensions` (or `brave://extensions`, `edge://extensions`)
+2. Find **One-Click Copy Image** in the list
+3. The **ID** is the long string of lowercase letters shown under the extension name (e.g. `abcdefghijklmnopqrstuvwxyzabcdef`)
+4. Copy it and paste it in place of `YOUR_EXTENSION_ID` in the install command above
 
-## How it works
-
-- **Content script** (`content.js`) detects Google Images preview panels via `[data-viewer-type]` with a structural fallback, injects a Copy button on the largest preview image
-- **Background service worker** (`background.js`) fetches images cross-origin, converts to PNG, or routes GIFs through the native helper
-- **Native helper** writes GIF data to the system clipboard as `com.compuserve.gif` (macOS) or via .NET `Clipboard` (Windows) — the same format browsers use for right-click "Copy Image"
-- If the native helper isn't installed, GIFs are downloaded to the Downloads folder instead
+After installing the helper, **restart your browser** (fully quit and reopen) for it to take effect.
 
 ## Development
 
 ```bash
 npm install
+npx playwright install chromium
 npx playwright test
 ```
 

@@ -38,11 +38,7 @@ By default, animated GIFs are downloaded because browsers can't copy them to the
 ./install.sh YOUR_EXTENSION_ID
 ```
 
-No admin password needed. To uninstall later:
-
-```bash
-~/.occi/uninstall.sh
-```
+No admin password needed.
 
 ### Windows
 
@@ -55,11 +51,7 @@ No admin password needed. To uninstall later:
 .\install.ps1 -ExtensionId YOUR_EXTENSION_ID
 ```
 
-No admin needed. To uninstall later:
-
-```powershell
-powershell "$env:LOCALAPPDATA\occi\uninstall.ps1"
-```
+No admin needed.
 
 ### How to find your extension ID
 
@@ -69,6 +61,44 @@ powershell "$env:LOCALAPPDATA\occi\uninstall.ps1"
 4. Copy it and paste it in place of `YOUR_EXTENSION_ID` in the install command above
 
 After installing the helper, **restart your browser** (fully quit and reopen) for it to take effect.
+
+## Uninstall
+
+### Remove the extension
+
+1. Open `chrome://extensions` (or `brave://extensions`, `edge://extensions`)
+2. Find **One-Click Copy Image**
+3. Click **Remove**
+
+### Remove the GIF helper (if installed)
+
+The helper leaves no traces outside its install folder and a few small config files. To remove everything:
+
+**macOS:**
+
+1. Open **Terminal**
+2. Run:
+
+```bash
+~/.occi/uninstall.sh
+```
+
+3. Restart your browser
+
+This deletes the `~/.occi/` folder and removes the config files from all browsers.
+
+**Windows:**
+
+1. Press `Win+R`, type `powershell`, press Enter
+2. Run:
+
+```powershell
+& "$env:LOCALAPPDATA\occi\uninstall.ps1"
+```
+
+3. Restart your browser
+
+This deletes the `%LOCALAPPDATA%\occi\` folder, removes config files, and cleans up registry entries.
 
 ## Development
 

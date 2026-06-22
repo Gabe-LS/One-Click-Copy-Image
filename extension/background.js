@@ -8,13 +8,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
-  if (message.action === "copyGifNative") {
-    copyGifNative(message.base64)
-      .then((result) => sendResponse(result))
-      .catch((err) => sendResponse({ success: false, error: err.message }));
-    return true;
-  }
-
   if (message.action === "downloadGif") {
     downloadGif(message.src, message.filename)
       .then((result) => sendResponse(result))
@@ -42,10 +35,19 @@ async function fetchImage(src) {
 
     if (isGif) {
       const buf = await blob.arrayBuffer();
+      const base64 = arrayBufferToBase64(buf);
+
+      // Try native clipboard first (preserves animation)
+      const nativeResult = await copyGifNative(base64);
+      if (nativeResult.success) {
+        return { success: true, isGif: true, copied: true };
+      }
+
+      // Native host unavailable — caller should fall back to download
       return {
         success: true,
         isGif: true,
-        gifBase64: arrayBufferToBase64(buf),
+        copied: false,
         resolvedUrl,
         filename: sanitizeFilename(resolvedUrl, "gif"),
       };

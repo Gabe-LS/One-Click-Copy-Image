@@ -30,14 +30,19 @@ func sendMessage(_ dict: [String: Any]) {
 func copyGifToClipboard(base64: String) -> Bool {
     guard let data = Data(base64Encoded: base64) else { return false }
 
+    let gifType = NSPasteboard.PasteboardType("com.compuserve.gif")
     let pb = NSPasteboard.general
     pb.clearContents()
 
-    // Write as GIF (preserves animation) and as TIFF (static fallback)
-    pb.setData(data, forType: .init("com.compuserve.gif"))
-
-    if let image = NSImage(data: data) {
-        pb.writeObjects([image])
+    var types: [NSPasteboard.PasteboardType] = [gifType]
+    if let image = NSImage(data: data), let tiff = image.tiffRepresentation {
+        types.append(.tiff)
+        pb.declareTypes(types, owner: nil)
+        pb.setData(data, forType: gifType)
+        pb.setData(tiff, forType: .tiff)
+    } else {
+        pb.declareTypes(types, owner: nil)
+        pb.setData(data, forType: gifType)
     }
 
     return true

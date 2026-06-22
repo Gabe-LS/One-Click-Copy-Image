@@ -124,13 +124,8 @@
       }
 
       if (response.isGif) {
-        // Try native clipboard (preserves animation), fall back to download
-        const nativeResult = await chrome.runtime.sendMessage({
-          action: "copyGifNative",
-          base64: response.gifBase64,
-        });
-
-        if (!nativeResult?.success) {
+        // Background already tried native clipboard. If that failed, download.
+        if (!response.copied) {
           const dlResult = await chrome.runtime.sendMessage({
             action: "downloadGif",
             src: response.resolvedUrl || img.src,

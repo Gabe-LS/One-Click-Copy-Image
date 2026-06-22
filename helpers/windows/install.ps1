@@ -8,7 +8,7 @@ $InstallDir = "$env:LOCALAPPDATA\occi"
 $Helper = "$InstallDir\clipboard_helper.ps1"
 $Launcher = "$InstallDir\clipboard_helper.bat"
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$Source = "$ScriptDir\native-host\windows\clipboard_helper.ps1"
+$Source = "$ScriptDir\clipboard_helper.ps1"
 
 $RegPaths = @(
     "HKCU:\Software\Google\Chrome\NativeMessagingHosts\$HostName"
@@ -19,7 +19,7 @@ $RegPaths = @(
 )
 
 function Do-Uninstall {
-    Write-Host "Uninstalling One-Click Copy Image native helper..."
+    Write-Host "Uninstalling One-Click Copy Image GIF helper..."
     $removed = 0
 
     foreach ($regPath in $RegPaths) {
@@ -29,7 +29,6 @@ function Do-Uninstall {
         }
     }
 
-    # Also remove manifest files (some browsers use file-based lookup)
     $manifestDirs = @(
         "$env:LOCALAPPDATA\Google\Chrome\User Data\NativeMessagingHosts"
         "$env:LOCALAPPDATA\BraveSoftware\Brave-Browser\User Data\NativeMessagingHosts"
@@ -37,10 +36,7 @@ function Do-Uninstall {
     )
     foreach ($dir in $manifestDirs) {
         $f = "$dir\$HostName.json"
-        if (Test-Path $f) {
-            Remove-Item $f -Force
-            $removed++
-        }
+        if (Test-Path $f) { Remove-Item $f -Force; $removed++ }
     }
 
     if (Test-Path $InstallDir) {
@@ -49,7 +45,7 @@ function Do-Uninstall {
     }
 
     if ($removed -gt 0) {
-        Write-Host "Removed. Restart your browser."
+        Write-Host "Done. Restart your browser."
     } else {
         Write-Host "Nothing to remove."
     }
@@ -61,9 +57,9 @@ function Do-Install {
     if (-not $Id) {
         Write-Host ""
         Write-Host "To find your extension ID:"
-        Write-Host "  1. Open chrome://extensions or brave://extensions"
+        Write-Host "  1. Open chrome://extensions (or brave://extensions, edge://extensions)"
         Write-Host "  2. Find 'One-Click Copy Image'"
-        Write-Host "  3. Copy the ID (32 lowercase letters)"
+        Write-Host "  3. Copy the ID - the 32 lowercase letters under the name"
         Write-Host ""
         $Id = Read-Host "Extension ID"
     }
@@ -74,19 +70,18 @@ function Do-Install {
     }
 
     if (-not (Test-Path $Source)) {
-        Write-Host "Error: $Source not found"
+        Write-Host "Error: clipboard_helper.ps1 not found next to this script"
         exit 1
     }
 
     New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null
     Copy-Item $Source $Helper -Force
 
-    # Batch launcher — Chrome can't execute .ps1 directly
     Set-Content $Launcher "@echo off`npowershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$Helper`""
 
     $manifest = @{
         name = $HostName
-        description = "Clipboard helper for One-Click Copy Image"
+        description = "GIF clipboard helper for One-Click Copy Image"
         path = $Launcher
         type = "stdio"
         allowed_origins = @("chrome-extension://$Id/")
@@ -95,7 +90,6 @@ function Do-Install {
     $manifestFile = "$InstallDir\$HostName.json"
     Set-Content $manifestFile $manifest -Encoding UTF8
 
-    # Register via HKCU registry (no admin needed)
     $installed = 0
     foreach ($regPath in $RegPaths) {
         $parent = Split-Path $regPath
@@ -107,7 +101,6 @@ function Do-Install {
         $installed++
     }
 
-    # Also write manifest files for browsers that use file-based lookup
     $manifestDirs = @(
         "$env:LOCALAPPDATA\Google\Chrome\User Data\NativeMessagingHosts"
         "$env:LOCALAPPDATA\BraveSoftware\Brave-Browser\User Data\NativeMessagingHosts"
@@ -121,7 +114,6 @@ function Do-Install {
     }
 
     if ($installed -eq 0) {
-        # Fallback: register for Chrome
         $regPath = "HKCU:\Software\Google\Chrome\NativeMessagingHosts\$HostName"
         New-Item -Path $regPath -Force | Out-Null
         Set-ItemProperty -Path $regPath -Name "(Default)" -Value $manifestFile
@@ -129,10 +121,7 @@ function Do-Install {
     }
 
     Write-Host ""
-    Write-Host "Helper: $Helper"
-    Write-Host "Extension ID: $Id"
-    Write-Host ""
-    Write-Host "Restart your browser to activate."
+    Write-Host "Done! Restart your browser to activate."
 }
 
 if ($Uninstall) {

@@ -5,7 +5,7 @@ HOST_NAME="com.occi.clipboard_helper"
 INSTALL_DIR="$HOME/.occi"
 HELPER="$INSTALL_DIR/clipboard_helper.sh"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-SOURCE="$SCRIPT_DIR/native-host/macos/clipboard_helper.sh"
+SOURCE="$SCRIPT_DIR/clipboard_helper.sh"
 
 BROWSERS=(
   "Google/Chrome:Chrome"
@@ -18,7 +18,7 @@ BROWSERS=(
 )
 
 uninstall() {
-  echo "Uninstalling One-Click Copy Image native helper..."
+  echo "Uninstalling One-Click Copy Image GIF helper..."
   local removed=0
 
   for entry in "${BROWSERS[@]}"; do
@@ -36,7 +36,7 @@ uninstall() {
   fi
 
   if [ "$removed" -gt 0 ]; then
-    echo "Removed. Restart your browser."
+    echo "Done. Restart your browser."
   else
     echo "Nothing to remove."
   fi
@@ -48,9 +48,9 @@ install() {
   if [ -z "$ext_id" ]; then
     echo ""
     echo "To find your extension ID:"
-    echo "  1. Open chrome://extensions or brave://extensions"
+    echo "  1. Open chrome://extensions (or brave://extensions, edge://extensions)"
     echo "  2. Find 'One-Click Copy Image'"
-    echo "  3. Copy the ID (32 lowercase letters)"
+    echo "  3. Copy the ID — the 32 lowercase letters under the name"
     echo ""
     read -rp "Extension ID: " ext_id
   fi
@@ -61,7 +61,7 @@ install() {
   fi
 
   if [ ! -f "$SOURCE" ]; then
-    echo "Error: $SOURCE not found"
+    echo "Error: clipboard_helper.sh not found next to this script"
     exit 1
   fi
 
@@ -71,7 +71,7 @@ install() {
 
   local manifest="{
   \"name\": \"$HOST_NAME\",
-  \"description\": \"Clipboard helper for One-Click Copy Image\",
+  \"description\": \"GIF clipboard helper for One-Click Copy Image\",
   \"path\": \"$HELPER\",
   \"type\": \"stdio\",
   \"allowed_origins\": [
@@ -102,18 +102,17 @@ install() {
   fi
 
   echo ""
-  echo "Helper: $HELPER"
-  echo "Extension ID: $ext_id"
-  echo ""
-  echo "Restart your browser to activate."
+  echo "Done! Restart your browser to activate."
 }
 
 case "${1:-}" in
   --uninstall) uninstall ;;
   --help|-h)
+    echo "One-Click Copy Image — GIF clipboard helper installer (macOS)"
+    echo ""
     echo "Usage:"
-    echo "  ./install-macos.sh <extension-id>    Install native helper"
-    echo "  ./install-macos.sh --uninstall       Remove native helper"
+    echo "  ./install.sh <extension-id>    Install"
+    echo "  ./install.sh --uninstall       Remove"
     ;;
   *) install "${1:-}" ;;
 esac

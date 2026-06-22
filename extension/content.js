@@ -70,6 +70,53 @@
     return img.parentElement;
   }
 
+  // --- Resolve the best image URL at click time ---
+
+  function isProxyUrl(src) {
+    try {
+      const host = new URL(src).hostname;
+      return host.endsWith(".gstatic.com") || host.endsWith(".googleusercontent.com");
+    } catch {
+      return false;
+    }
+  }
+
+  function findBestImageSrc(btn) {
+    const target = btn._targetImg;
+    const container = btn.parentElement;
+    if (!container) return target?.src || null;
+
+    // Collect all loaded images in the same container
+    const imgs = container.querySelectorAll("img");
+    let bestReal = null;
+    let bestProxy = null;
+
+    for (const img of imgs) {
+      if (!img.src || img.naturalWidth === 0) continue;
+      if (img.src.startsWith("data:")) continue;
+
+      if (isProxyUrl(img.src)) {
+        if (!bestProxy) bestProxy = img.src;
+      } else {
+        bestReal = img.src;
+      }
+    }
+
+    // Also check the parent's parent — the full-res image might be a sibling
+    // of the container (Google stacks images in nested wrappers)
+    if (!bestReal && container.parentElement) {
+      for (const img of container.parentElement.querySelectorAll("img")) {
+        if (!img.src || img.naturalWidth === 0 || img.src.startsWith("data:")) continue;
+        if (!isProxyUrl(img.src)) {
+          bestReal = img.src;
+          break;
+        }
+      }
+    }
+
+    return bestReal || bestProxy || target?.src || null;
+  }
+
   // --- Button creation & state ---
 
   function createCopyButton() {
@@ -103,11 +150,9 @@
     busy = true;
 
     const btn = e.currentTarget;
+    const src = findBestImageSrc(btn);
 
-    // The button's _targetImg holds a reference to the image it was created for.
-    // Re-resolve in case the src updated (Google lazy-loads the full-res image).
-    const img = btn._targetImg;
-    if (!img || !img.src || !img.isConnected) {
+    if (!src) {
       showButtonState(btn, "error");
       busy = false;
       return;
@@ -116,7 +161,7 @@
     try {
       const response = await chrome.runtime.sendMessage({
         action: "fetchImage",
-        src: img.src,
+        src,
       });
 
       if (!response?.success) {

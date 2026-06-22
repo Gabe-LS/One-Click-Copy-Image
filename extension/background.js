@@ -37,13 +37,12 @@ async function fetchImage(src) {
       const buf = await blob.arrayBuffer();
       const base64 = arrayBufferToBase64(buf);
 
-      // Try native clipboard first (preserves animation)
       const nativeResult = await copyGifNative(base64);
+
       if (nativeResult.success) {
         return { success: true, isGif: true, copied: true };
       }
 
-      // Native host unavailable — caller should fall back to download
       return {
         success: true,
         isGif: true,

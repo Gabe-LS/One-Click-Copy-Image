@@ -1,24 +1,21 @@
 const NATIVE_HOST = "com.occi.clipboard_helper";
-
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.action === "fetchImage") {
-    fetchImage(message.src)
-      .then((result) => sendResponse(result))
-      .catch((err) => sendResponse({ success: false, error: err.message }));
-    return true;
-  }
-
-  if (message.action === "downloadGif") {
-    downloadGif(message.src, message.filename)
-      .then((result) => sendResponse(result))
-      .catch((err) => sendResponse({ success: false, error: err.message }));
-    return true;
-  }
-});
-
 const MAX_DIMENSION = 4096;
 const FETCH_TIMEOUT_MS = 30000;
 const DOWNLOAD_TIMEOUT_MS = 60000;
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  const handler = handlers[message.action];
+  if (!handler) return;
+  handler(message)
+    .then((result) => sendResponse(result))
+    .catch((err) => sendResponse({ success: false, error: err.message }));
+  return true;
+});
+
+const handlers = {
+  fetchImage: (msg) => fetchImage(msg.src),
+  downloadGif: (msg) => downloadGif(msg.src, msg.filename),
+};
 
 async function fetchImage(src) {
   const controller = new AbortController();
@@ -29,14 +26,11 @@ async function fetchImage(src) {
     if (!response.ok) throw new Error(`Fetch failed: ${response.status}`);
 
     const contentType = response.headers.get("content-type") || "";
-    const resolvedUrl = response.url;
     const blob = await response.blob();
     const isGif = blob.type === "image/gif" || contentType.includes("image/gif");
 
     if (isGif) {
-      const buf = await blob.arrayBuffer();
-      const base64 = arrayBufferToBase64(buf);
-
+      const base64 = arrayBufferToBase64(await blob.arrayBuffer());
       const nativeResult = await copyGifNative(base64);
 
       if (nativeResult.success) {
@@ -47,8 +41,8 @@ async function fetchImage(src) {
         success: true,
         isGif: true,
         copied: false,
-        resolvedUrl,
-        filename: sanitizeFilename(resolvedUrl, "gif"),
+        resolvedUrl: response.url,
+        filename: sanitizeFilename(response.url, "gif"),
       };
     }
 
@@ -62,14 +56,11 @@ async function fetchImage(src) {
     }
 
     const canvas = new OffscreenCanvas(w, h);
-    const ctx = canvas.getContext("2d");
-    ctx.drawImage(bitmap, 0, 0, w, h);
+    canvas.getContext("2d").drawImage(bitmap, 0, 0, w, h);
     bitmap.close();
 
-    const pngBlob = await canvas.convertToBlob({ type: "image/png" });
-    const buf = await pngBlob.arrayBuffer();
-
-    return { success: true, isGif: false, pngBase64: arrayBufferToBase64(buf) };
+    const pngBuf = await (await canvas.convertToBlob({ type: "image/png" })).arrayBuffer();
+    return { success: true, isGif: false, pngBase64: arrayBufferToBase64(pngBuf) };
   } finally {
     clearTimeout(timer);
   }
@@ -127,12 +118,11 @@ async function downloadGif(src, filename) {
 
 function sanitizeFilename(url, defaultExt) {
   try {
-    const pathname = new URL(url).pathname;
-    const last = pathname.split("/").pop();
+    const last = new URL(url).pathname.split("/").pop();
     if (last) {
-      const clean = last.replace(/[^a-zA-Z0-9._-]/g, "_").substring(0, 200);
-      if (clean.includes(".")) return clean;
-      return clean + "." + defaultExt;
+      const clean = last.replace(/[^a-zA-Z0-9._-]/g, "_").replace(/^\.+|\.+$/g, "").substring(0, 200);
+      if (clean && clean.includes(".")) return clean;
+      if (clean) return clean + "." + defaultExt;
     }
   } catch {}
   return "image." + defaultExt;
@@ -141,9 +131,9 @@ function sanitizeFilename(url, defaultExt) {
 function arrayBufferToBase64(buffer) {
   const bytes = new Uint8Array(buffer);
   const CHUNK = 8192;
-  let binary = "";
+  const parts = [];
   for (let i = 0; i < bytes.length; i += CHUNK) {
-    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK));
+    parts.push(String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK)));
   }
-  return btoa(binary);
+  return btoa(parts.join(""));
 }

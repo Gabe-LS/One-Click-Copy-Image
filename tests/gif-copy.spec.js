@@ -5,7 +5,7 @@ const fs = require("fs");
 const EXTENSION_PATH = path.join(__dirname, "..", "extension");
 const USER_DATA_DIR = path.join(__dirname, "..", ".chrome-profile");
 
-test("extension copies/saves image from Google Images", async () => {
+test("extension copies image from Google Images", async () => {
   if (!fs.existsSync(USER_DATA_DIR)) {
     fs.mkdirSync(USER_DATA_DIR, { recursive: true });
   }
@@ -52,23 +52,20 @@ test("extension copies/saves image from Google Images", async () => {
     const results = [];
     imgs.forEach((img) => {
       const rect = img.getBoundingClientRect();
-      if (rect.width > 80 && rect.height > 80 && rect.x >= 0 && rect.x < 800 && rect.y >= 200) {
+      if (rect.width > 100 && rect.height > 100 && rect.x >= 0 && rect.x < 800 && rect.y >= 200) {
         results.push({ x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 });
       }
     });
     return results;
   });
 
-  console.log(`Found ${gridImages.length} grid images`);
   expect(gridImages.length).toBeGreaterThan(0);
 
-  const target = gridImages[Math.min(2, gridImages.length - 1)];
-  await page.mouse.click(target.x, target.y);
+  await page.mouse.click(gridImages[2].x, gridImages[2].y);
   await page.waitForTimeout(3000);
 
   const copyBtn = page.locator(".occi-copy-btn.occi-visible").first();
   await expect(copyBtn).toBeVisible({ timeout: 5000 });
-
   await copyBtn.click();
 
   await page.waitForFunction(
@@ -76,11 +73,15 @@ test("extension copies/saves image from Google Images", async () => {
     { timeout: 15000 }
   );
 
-  const hasSuccess = await page.locator(".occi-copy-btn.occi-success").count();
-  expect(hasSuccess).toBeGreaterThan(0);
-  console.log("Copy/save succeeded (button turned green)");
+  const hasImage = await page.evaluate(async () => {
+    try {
+      const items = await navigator.clipboard.read();
+      return items.some((item) => item.types.includes("image/png"));
+    } catch { return false; }
+  });
+  expect(hasImage).toBe(true);
 
-  await page.screenshot({ path: "screenshots/result.png" });
+  console.log("Image copied to clipboard successfully");
   await page.waitForTimeout(2000);
   await context.close();
 });

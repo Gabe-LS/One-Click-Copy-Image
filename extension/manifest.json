@@ -5,7 +5,6 @@
   "description": "Copy images directly from Google Images with one click",
   "permissions": [
     "clipboardWrite",
-    "activeTab",
     "downloads",
     "nativeMessaging"
   ],

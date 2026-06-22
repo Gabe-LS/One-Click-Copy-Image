@@ -3,121 +3,94 @@
 
   const COPY_ICON = `<svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>`;
 
+  const PROXY_HOSTS = new Set(["encrypted-tbn0.gstatic.com", "encrypted-tbn1.gstatic.com", "encrypted-tbn2.gstatic.com", "encrypted-tbn3.gstatic.com"]);
+
   function isGoogleImagesPage() {
     const params = new URLSearchParams(window.location.search);
-    if (params.get("udm") === "2" || params.get("tbm") === "isch") return true;
-    return (
-      window.location.hostname.startsWith("www.google.") &&
-      window.location.pathname === "/search" &&
-      document.querySelectorAll("img").length > 20
-    );
+    return params.get("udm") === "2" || params.get("tbm") === "isch";
   }
 
-  // --- Find preview images worth adding a button to ---
-  // Instead of detecting "panels", find large images on the right side of the
-  // viewport that look like Google Images preview images.
+  function isProxyUrl(src) {
+    try { return PROXY_HOSTS.has(new URL(src).hostname); }
+    catch { return false; }
+  }
+
+  // --- Find large preview images on the right side of the viewport ---
 
   function findPreviewImages() {
-    const vw = window.innerWidth;
-    const rightThreshold = vw * 0.45;
+    const rightThreshold = window.innerWidth * 0.45;
+    const vh = window.innerHeight;
     const results = [];
 
-    document.querySelectorAll("img").forEach((img) => {
-      if (img.closest(".occi-has-btn")) return;
-      if (!img.src || img.naturalWidth === 0) return;
+    for (const img of document.querySelectorAll("img")) {
+      if (img.closest(".occi-has-btn")) continue;
+      if (!img.src || img.naturalWidth === 0) continue;
 
       const r = img.getBoundingClientRect();
-      if (r.width < 200 || r.height < 200) return;
-      if (r.left < rightThreshold) return;
-      if (r.bottom < 0 || r.top > window.innerHeight) return;
+      if (r.width < 200 || r.height < 200) continue;
+      if (r.left < rightThreshold) continue;
+      if (r.bottom < 0 || r.top > vh) continue;
 
       results.push(img);
-    });
+    }
 
-    // If nothing on the right, fall back to any large image inside a
-    // container with data-viewer-type (the one stable behavioral attribute).
     if (results.length === 0) {
-      document.querySelectorAll("[data-viewer-type] img").forEach((img) => {
-        if (img.closest(".occi-has-btn")) return;
-        if (!img.src || img.naturalWidth === 0) return;
+      for (const img of document.querySelectorAll("[data-viewer-type] img")) {
+        if (img.closest(".occi-has-btn")) continue;
+        if (!img.src || img.naturalWidth === 0) continue;
         const r = img.getBoundingClientRect();
-        if (r.width < 150 || r.height < 150) return;
+        if (r.width < 150 || r.height < 150) continue;
         results.push(img);
-      });
+      }
     }
 
     return results;
   }
 
-  // --- Find a suitable parent to anchor the button ---
+  // --- Find a suitable positioned ancestor to anchor the button ---
 
   function findImageContainer(img) {
-    let el = img.parentElement;
     const imgRect = img.getBoundingClientRect();
+    let el = img.parentElement;
 
     for (let i = 0; i < 5 && el; i++) {
       const r = el.getBoundingClientRect();
-      const sameWidth = Math.abs(r.width - imgRect.width) < 40;
-      const sameHeight = Math.abs(r.height - imgRect.height) < 40;
-      if (sameWidth && sameHeight) return el;
-
-      const pos = window.getComputedStyle(el).position;
-      if (pos === "relative" || pos === "absolute") return el;
-
+      if (Math.abs(r.width - imgRect.width) < 40 && Math.abs(r.height - imgRect.height) < 40) {
+        return el;
+      }
+      const pos = getComputedStyle(el).position;
+      if (pos === "relative" || pos === "absolute") {
+        return el;
+      }
       el = el.parentElement;
     }
 
     return img.parentElement;
   }
 
-  // --- Resolve the best image URL at click time ---
-
-  function isProxyUrl(src) {
-    try {
-      const host = new URL(src).hostname;
-      return host.endsWith(".gstatic.com") || host.endsWith(".googleusercontent.com");
-    } catch {
-      return false;
-    }
-  }
+  // --- At click time, find the original (non-proxy) image URL ---
 
   function findBestImageSrc(btn) {
-    const target = btn._targetImg;
-    const container = btn.parentElement;
-    if (!container) return target?.src || null;
+    const scope = btn.parentElement?.parentElement || btn.parentElement;
+    if (!scope) return btn._targetImg?.src || null;
 
-    // Collect all loaded images in the same container
-    const imgs = container.querySelectorAll("img");
     let bestReal = null;
     let bestProxy = null;
 
-    for (const img of imgs) {
-      if (!img.src || img.naturalWidth === 0) continue;
-      if (img.src.startsWith("data:")) continue;
+    for (const img of scope.querySelectorAll("img")) {
+      if (!img.src || img.naturalWidth === 0 || img.src.startsWith("data:")) continue;
 
       if (isProxyUrl(img.src)) {
-        if (!bestProxy) bestProxy = img.src;
+        bestProxy ??= img.src;
       } else {
         bestReal = img.src;
       }
     }
 
-    // Also check the parent's parent — the full-res image might be a sibling
-    // of the container (Google stacks images in nested wrappers)
-    if (!bestReal && container.parentElement) {
-      for (const img of container.parentElement.querySelectorAll("img")) {
-        if (!img.src || img.naturalWidth === 0 || img.src.startsWith("data:")) continue;
-        if (!isProxyUrl(img.src)) {
-          bestReal = img.src;
-          break;
-        }
-      }
-    }
-
-    return bestReal || bestProxy || target?.src || null;
+    return bestReal || bestProxy || btn._targetImg?.src || null;
   }
 
-  // --- Button creation & state ---
+  // --- Button ---
 
   function createCopyButton() {
     const btn = document.createElement("button");
@@ -137,7 +110,7 @@
     }
   }
 
-  // --- Copy / download handler ---
+  // --- Click handler ---
 
   let busy = false;
 
@@ -159,33 +132,23 @@
     }
 
     try {
-      const response = await chrome.runtime.sendMessage({
-        action: "fetchImage",
-        src,
-      });
+      const response = await chrome.runtime.sendMessage({ action: "fetchImage", src });
 
-      if (!response?.success) {
-        throw new Error(response?.error || "Fetch failed");
+      if (!response?.success) throw new Error(response?.error || "Fetch failed");
+
+      if (response.isGif && !response.copied) {
+        const dlResult = await chrome.runtime.sendMessage({
+          action: "downloadGif",
+          src: response.resolvedUrl || src,
+          filename: response.filename,
+        });
+        if (!dlResult?.success) throw new Error(dlResult?.error || "Download failed");
       }
 
-      if (response.isGif) {
-        // Background already tried native clipboard. If that failed, download.
-        if (!response.copied) {
-          const dlResult = await chrome.runtime.sendMessage({
-            action: "downloadGif",
-            src: response.resolvedUrl || img.src,
-            filename: response.filename,
-          });
-
-          if (!dlResult?.success) {
-            throw new Error(dlResult?.error || "Download failed");
-          }
-        }
-      } else {
+      if (!response.isGif) {
         const raw = atob(response.pngBase64);
         const bytes = new Uint8Array(raw.length);
         for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
-
         await navigator.clipboard.write([
           new ClipboardItem({ "image/png": new Blob([bytes], { type: "image/png" }) }),
         ]);
@@ -200,13 +163,13 @@
     }
   }
 
-  // --- Inject buttons ---
+  // --- Inject buttons into preview panels ---
 
   function attachButton(img) {
     const container = findImageContainer(img);
     if (!container) return;
 
-    const pos = window.getComputedStyle(container).position;
+    const pos = getComputedStyle(container).position;
     if (pos === "static") container.style.position = "relative";
 
     container.classList.add("occi-has-btn");
@@ -219,13 +182,10 @@
 
   function scanAndAttach() {
     if (!isGoogleImagesPage()) return;
-
-    for (const img of findPreviewImages()) {
-      attachButton(img);
-    }
+    for (const img of findPreviewImages()) attachButton(img);
   }
 
-  // --- MutationObserver (throttled) ---
+  // --- Throttled MutationObserver ---
 
   let scanTimer = null;
   const observer = new MutationObserver(() => {
@@ -236,7 +196,6 @@
     });
   });
 
-  const root = document.body || document.documentElement;
-  observer.observe(root, { childList: true, subtree: true });
+  observer.observe(document.body, { childList: true, subtree: true });
   scanAndAttach();
 })();

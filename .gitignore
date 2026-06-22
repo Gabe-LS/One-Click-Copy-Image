@@ -3,3 +3,4 @@ node_modules/
 screenshots/
 test-results/
 .DS_Store
+.ruff_cache/

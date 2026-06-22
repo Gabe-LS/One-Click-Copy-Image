@@ -5,70 +5,111 @@
 
   function isGoogleImagesPage() {
     const params = new URLSearchParams(window.location.search);
-    return params.get("udm") === "2" || params.get("tbm") === "isch";
+    if (params.get("udm") === "2" || params.get("tbm") === "isch") return true;
+    return (
+      window.location.hostname.startsWith("www.google.") &&
+      window.location.pathname === "/search" &&
+      document.querySelectorAll("img").length > 20
+    );
   }
+
+  // --- Find preview images worth adding a button to ---
+  // Instead of detecting "panels", find large images on the right side of the
+  // viewport that look like Google Images preview images.
+
+  function findPreviewImages() {
+    const vw = window.innerWidth;
+    const rightThreshold = vw * 0.45;
+    const results = [];
+
+    document.querySelectorAll("img").forEach((img) => {
+      if (img.closest(".occi-has-btn")) return;
+      if (!img.src || img.naturalWidth === 0) return;
+
+      const r = img.getBoundingClientRect();
+      if (r.width < 200 || r.height < 200) return;
+      if (r.left < rightThreshold) return;
+      if (r.bottom < 0 || r.top > window.innerHeight) return;
+
+      results.push(img);
+    });
+
+    // If nothing on the right, fall back to any large image inside a
+    // container with data-viewer-type (the one stable behavioral attribute).
+    if (results.length === 0) {
+      document.querySelectorAll("[data-viewer-type] img").forEach((img) => {
+        if (img.closest(".occi-has-btn")) return;
+        if (!img.src || img.naturalWidth === 0) return;
+        const r = img.getBoundingClientRect();
+        if (r.width < 150 || r.height < 150) return;
+        results.push(img);
+      });
+    }
+
+    return results;
+  }
+
+  // --- Find a suitable parent to anchor the button ---
+
+  function findImageContainer(img) {
+    let el = img.parentElement;
+    const imgRect = img.getBoundingClientRect();
+
+    for (let i = 0; i < 5 && el; i++) {
+      const r = el.getBoundingClientRect();
+      const sameWidth = Math.abs(r.width - imgRect.width) < 40;
+      const sameHeight = Math.abs(r.height - imgRect.height) < 40;
+      if (sameWidth && sameHeight) return el;
+
+      const pos = window.getComputedStyle(el).position;
+      if (pos === "relative" || pos === "absolute") return el;
+
+      el = el.parentElement;
+    }
+
+    return img.parentElement;
+  }
+
+  // --- Button creation & state ---
 
   function createCopyButton() {
     const btn = document.createElement("button");
     btn.className = "occi-copy-btn";
     btn.innerHTML = COPY_ICON + "<span>Copy</span>";
-    btn.title = "Copy image to clipboard (GIFs are saved to Downloads)";
+    btn.title = "Copy image to clipboard";
     btn.addEventListener("click", handleCopyClick);
     return btn;
   }
 
   function showButtonState(btn, state) {
     btn.classList.remove("occi-success", "occi-error");
-    if (state === "success") {
-      btn.classList.add("occi-success");
-    } else if (state === "error") {
-      btn.classList.add("occi-error");
-    }
+    if (state) btn.classList.add(state === "success" ? "occi-success" : "occi-error");
     clearTimeout(btn._resetTimer);
     if (state) {
       btn._resetTimer = setTimeout(() => showButtonState(btn, null), 2000);
     }
   }
 
-  function findPreviewImage(panel) {
-    const fullImg = panel.querySelector('img[jsname="kn3ccd"]');
-    if (fullImg && fullImg.src && !fullImg.src.startsWith("data:") && fullImg.naturalWidth > 0) {
-      return fullImg;
-    }
+  // --- Copy / download handler ---
 
-    const thumbImg = panel.querySelector('img[jsname="JuXqh"]');
-    if (thumbImg && thumbImg.src && thumbImg.naturalWidth > 0) {
-      return thumbImg;
-    }
-
-    const candidates = panel.querySelectorAll("img.sFlh5c");
-    for (const img of candidates) {
-      if (img.naturalWidth > 0 && img.src) return img;
-    }
-
-    return null;
-  }
-
-  function base64ToBytes(base64) {
-    const binary = atob(base64);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) {
-      bytes[i] = binary.charCodeAt(i);
-    }
-    return bytes;
-  }
+  let busy = false;
 
   async function handleCopyClick(e) {
     e.preventDefault();
     e.stopPropagation();
     e.stopImmediatePropagation();
 
-    const btn = e.currentTarget;
-    const panel = btn.closest('div[jsname="H9tDt"], div.hh1Ztf') || btn.parentElement;
-    const img = findPreviewImage(panel);
+    if (busy) return;
+    busy = true;
 
-    if (!img) {
+    const btn = e.currentTarget;
+
+    // The button's _targetImg holds a reference to the image it was created for.
+    // Re-resolve in case the src updated (Google lazy-loads the full-res image).
+    const img = btn._targetImg;
+    if (!img || !img.src || !img.isConnected) {
       showButtonState(btn, "error");
+      busy = false;
       return;
     }
 
@@ -86,18 +127,19 @@
         const dlResult = await chrome.runtime.sendMessage({
           action: "downloadGif",
           src: response.resolvedUrl || img.src,
-          filename: response.filename || "image.gif",
+          filename: response.filename,
         });
 
         if (!dlResult?.success) {
           throw new Error(dlResult?.error || "Download failed");
         }
       } else {
-        const pngBytes = base64ToBytes(response.pngBase64);
-        const pngBlob = new Blob([pngBytes], { type: "image/png" });
+        const raw = atob(response.pngBase64);
+        const bytes = new Uint8Array(raw.length);
+        for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
 
         await navigator.clipboard.write([
-          new ClipboardItem({ "image/png": pngBlob }),
+          new ClipboardItem({ "image/png": new Blob([bytes], { type: "image/png" }) }),
         ]);
       }
 
@@ -105,39 +147,37 @@
     } catch (err) {
       console.error("[One-Click Copy Image]", err);
       showButtonState(btn, "error");
+    } finally {
+      busy = false;
     }
   }
 
-  function attachButtonToPanel(panel) {
-    if (panel.querySelector(".occi-copy-btn")) return;
+  // --- Inject buttons ---
 
-    const imgContainer = panel.querySelector('div[jsname="figiqf"], div.p7sI2');
-    if (!imgContainer) return;
+  function attachButton(img) {
+    const container = findImageContainer(img);
+    if (!container) return;
 
-    const computed = window.getComputedStyle(imgContainer);
-    if (computed.position === "static") {
-      imgContainer.style.position = "relative";
-    }
+    const pos = window.getComputedStyle(container).position;
+    if (pos === "static") container.style.position = "relative";
+
+    container.classList.add("occi-has-btn");
 
     const btn = createCopyButton();
-    imgContainer.appendChild(btn);
+    btn._targetImg = img;
+    container.appendChild(btn);
     btn.classList.add("occi-visible");
   }
 
   function scanAndAttach() {
     if (!isGoogleImagesPage()) return;
 
-    const panels = document.querySelectorAll(
-      'div[jsname="H9tDt"][data-viewer-type], div.hh1Ztf[data-viewer-type]'
-    );
-
-    panels.forEach((panel) => {
-      const rect = panel.getBoundingClientRect();
-      if (rect.width > 100 && rect.height > 100) {
-        attachButtonToPanel(panel);
-      }
-    });
+    for (const img of findPreviewImages()) {
+      attachButton(img);
+    }
   }
+
+  // --- MutationObserver (throttled) ---
 
   let scanTimer = null;
   const observer = new MutationObserver(() => {
@@ -148,13 +188,7 @@
     });
   });
 
-  if (document.body) {
-    observer.observe(document.body, { childList: true, subtree: true });
-    scanAndAttach();
-  } else {
-    document.addEventListener("DOMContentLoaded", () => {
-      observer.observe(document.body, { childList: true, subtree: true });
-      scanAndAttach();
-    });
-  }
+  const root = document.body || document.documentElement;
+  observer.observe(root, { childList: true, subtree: true });
+  scanAndAttach();
 })();

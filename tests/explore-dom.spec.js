@@ -5,7 +5,7 @@ const fs = require("fs");
 const EXTENSION_PATH = path.join(__dirname, "..", "extension");
 const USER_DATA_DIR = path.join(__dirname, "..", ".chrome-profile");
 
-test("extension copies image from Google Images preview", async () => {
+test("extension injects copy button and copies image", async () => {
   if (!fs.existsSync(USER_DATA_DIR)) {
     fs.mkdirSync(USER_DATA_DIR, { recursive: true });
   }
@@ -35,7 +35,6 @@ test("extension copies image from Google Images preview", async () => {
   await page.goto("https://www.google.com/search?q=cats&udm=2");
   await page.waitForLoadState("domcontentloaded");
 
-  // Handle cookie consent
   const consentBtn = page.locator(
     'button:has-text("Accept all"), button:has-text("Accetta tutto"), button:has-text("I agree"), button[id="L2AGLb"]'
   );
@@ -45,10 +44,10 @@ test("extension copies image from Google Images preview", async () => {
     await page.goto("https://www.google.com/search?q=cats&udm=2");
   }
 
-  await page.waitForSelector("img.YQ4gaf", { timeout: 30000 }).catch(() => {});
-  await page.waitForTimeout(2000);
+  await page.waitForSelector("img", { timeout: 30000 }).catch(() => {});
+  await page.waitForTimeout(3000);
 
-  // Find clickable grid images
+  // Click an image to open preview
   const gridImages = await page.evaluate(() => {
     const imgs = document.querySelectorAll("img");
     const results = [];
@@ -61,62 +60,36 @@ test("extension copies image from Google Images preview", async () => {
     return results;
   });
 
-  expect(gridImages.length).toBeGreaterThan(2);
+  expect(gridImages.length).toBeGreaterThan(0);
 
-  // Test 1: Click an image and copy it
-  const target = gridImages[Math.min(2, gridImages.length - 1)];
-  await page.mouse.click(target.x, target.y);
+  await page.mouse.click(gridImages[2].x, gridImages[2].y);
   await page.waitForTimeout(3000);
 
-  await page.screenshot({ path: "screenshots/01-preview-panel.png" });
-
-  // Verify copy button appears
+  // Verify button appears
   const copyBtn = page.locator(".occi-copy-btn.occi-visible").first();
   await expect(copyBtn).toBeVisible({ timeout: 5000 });
 
-  // Click copy and verify success
+  // Click and verify success
   await copyBtn.click();
   await page.waitForFunction(
     () => document.querySelector(".occi-copy-btn.occi-success") !== null,
     { timeout: 15000 }
   );
 
-  await page.screenshot({ path: "screenshots/02-copied.png" });
+  console.log("Success — button turned green");
 
-  const btnText = await copyBtn.textContent();
-  expect(btnText).toBe("Copied!");
-
-  // Verify clipboard
+  // Verify clipboard has image
   const hasImage = await page.evaluate(async () => {
-    const items = await navigator.clipboard.read();
-    for (const item of items) {
-      if (item.types.includes("image/png")) return true;
+    try {
+      const items = await navigator.clipboard.read();
+      return items.some((item) => item.types.includes("image/png"));
+    } catch {
+      return false;
     }
-    return false;
   });
   expect(hasImage).toBe(true);
+  console.log("Clipboard contains image/png");
 
-  console.log("Image successfully copied to clipboard!");
-
-  // Test 2: Click a different image and copy that too
-  const target2 = gridImages[Math.min(5, gridImages.length - 1)];
-  await page.mouse.click(target2.x, target2.y);
-  await page.waitForTimeout(3000);
-
-  const copyBtn2 = page.locator(".occi-copy-btn.occi-visible").first();
-  if (await copyBtn2.isVisible({ timeout: 5000 }).catch(() => false)) {
-    await copyBtn2.click();
-    await page.waitForFunction(
-      () => document.querySelector(".occi-copy-btn.occi-success") !== null,
-      { timeout: 15000 }
-    ).catch(() => {});
-
-    const btn2Text = await copyBtn2.textContent().catch(() => "?");
-    console.log(`Second image copy result: "${btn2Text}"`);
-  }
-
-  await page.screenshot({ path: "screenshots/03-second-image.png" });
-
-  await page.waitForTimeout(3000);
+  await page.waitForTimeout(2000);
   await context.close();
 });

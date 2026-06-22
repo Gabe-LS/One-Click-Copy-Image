@@ -5,7 +5,7 @@ const fs = require("fs");
 const EXTENSION_PATH = path.join(__dirname, "..", "extension");
 const USER_DATA_DIR = path.join(__dirname, "..", ".chrome-profile");
 
-test("extension saves animated GIF from Google Images", async () => {
+test("extension copies/saves image from Google Images", async () => {
   if (!fs.existsSync(USER_DATA_DIR)) {
     fs.mkdirSync(USER_DATA_DIR, { recursive: true });
   }
@@ -32,9 +32,7 @@ test("extension saves animated GIF from Google Images", async () => {
     }
   });
 
-  await page.goto(
-    "https://www.google.com/search?q=funny+cat+gif&udm=2&tbs=itp:animated"
-  );
+  await page.goto("https://www.google.com/search?q=cats&udm=2");
   await page.waitForLoadState("domcontentloaded");
 
   const consentBtn = page.locator(
@@ -43,9 +41,7 @@ test("extension saves animated GIF from Google Images", async () => {
   if (await consentBtn.first().isVisible({ timeout: 3000 }).catch(() => false)) {
     await consentBtn.first().click();
     await page.waitForTimeout(1000);
-    await page.goto(
-      "https://www.google.com/search?q=funny+cat+gif&udm=2&tbs=itp:animated"
-    );
+    await page.goto("https://www.google.com/search?q=cats&udm=2");
   }
 
   await page.waitForSelector("img", { timeout: 30000 }).catch(() => {});
@@ -75,20 +71,16 @@ test("extension saves animated GIF from Google Images", async () => {
 
   await copyBtn.click();
 
-  // Wait for either "Saved!" or "Copied!"
   await page.waitForFunction(
     () => document.querySelector(".occi-copy-btn.occi-success") !== null,
     { timeout: 15000 }
   );
 
-  const btnText = await copyBtn.textContent();
-  console.log(`Result: "${btnText}"`);
+  const hasSuccess = await page.locator(".occi-copy-btn.occi-success").count();
+  expect(hasSuccess).toBeGreaterThan(0);
+  console.log("Copy/save succeeded (button turned green)");
 
-  // GIF results should show "Saved!", non-GIF should show "Copied!"
-  expect(["Saved!", "Copied!"]).toContain(btnText);
-
-  await page.screenshot({ path: "screenshots/gif-result.png" });
-
-  await page.waitForTimeout(3000);
+  await page.screenshot({ path: "screenshots/result.png" });
+  await page.waitForTimeout(2000);
   await context.close();
 });

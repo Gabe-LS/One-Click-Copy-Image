@@ -18,8 +18,11 @@
   // --- Find large preview images on the right side of the viewport ---
 
   function findPreviewImages() {
-    const rightThreshold = window.innerWidth * 0.45;
+    const vw = window.innerWidth;
     const vh = window.innerHeight;
+    // The preview panel occupies roughly the right 40% of the viewport.
+    // Use 55% as threshold to avoid matching grid images that spill past center.
+    const rightThreshold = vw * 0.55;
     const results = [];
 
     for (const img of document.querySelectorAll("img")) {
@@ -27,7 +30,8 @@
       if (!img.src || img.naturalWidth === 0) continue;
 
       const r = img.getBoundingClientRect();
-      if (r.width < 200 || r.height < 200) continue;
+      // Preview images are substantially larger than grid thumbnails
+      if (r.width < 300 || r.height < 200) continue;
       if (r.left < rightThreshold) continue;
       if (r.bottom < 0 || r.top > vh) continue;
 

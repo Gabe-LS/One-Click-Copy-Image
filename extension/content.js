@@ -136,10 +136,17 @@
   }
 
   function showButtonState(btn, state) {
-    btn.classList.remove("occi-success", "occi-error");
-    if (state) btn.classList.add(state === "success" ? "occi-success" : "occi-error");
+    btn.classList.remove("occi-loading", "occi-success", "occi-error");
+    if (state === "loading") {
+      // Force a reflow so the ::before resets to scaleX(0) before the
+      // transition to scaleX(0.9) kicks in.
+      void btn.offsetWidth;
+      btn.classList.add("occi-loading");
+    } else if (state) {
+      btn.classList.add(state === "success" ? "occi-success" : "occi-error");
+    }
     clearTimeout(btn._resetTimer);
-    if (state) {
+    if (state && state !== "loading") {
       btn._resetTimer = setTimeout(() => showButtonState(btn, null), 2000);
     }
   }
@@ -177,6 +184,8 @@
       busy = false;
       return;
     }
+
+    showButtonState(btn, "loading");
 
     try {
       // Canvas fast path: zero network, instant. Skip for GIF URLs

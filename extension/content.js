@@ -127,6 +127,18 @@
     }
   }
 
+  // --- Canvas-based copy (instant, no network) ---
+
+  async function tryCanvasCopy(img) {
+    const canvas = document.createElement("canvas");
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    canvas.getContext("2d").drawImage(img, 0, 0);
+    const blob = await new Promise((res) => canvas.toBlob(res, "image/png"));
+    if (!blob) throw new Error("toBlob failed");
+    await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+  }
+
   // --- Click handler ---
 
   let busy = false;
@@ -140,6 +152,7 @@
     busy = true;
 
     const btn = e.currentTarget;
+    const img = btn._targetImg;
     const src = findBestImageSrc(btn);
 
     if (!src) {
@@ -149,20 +162,26 @@
     }
 
     try {
+      // Fast path: draw the already-loaded image to canvas and copy.
+      // Works when the image has CORS headers or is same-origin.
+      if (img?.complete && img.naturalWidth > 0) {
+        try {
+          await tryCanvasCopy(img);
+          showButtonState(btn, "success");
+          return;
+        } catch {}
+      }
+
+      // Slow path: fetch via background service worker (bypasses CORS)
       const response = await chrome.runtime.sendMessage({ action: "fetchImage", src });
 
       if (!response?.success) throw new Error(response?.error || "Fetch failed");
 
-      if (response.isGif && !response.copied) {
-        const dlResult = await chrome.runtime.sendMessage({
-          action: "downloadGif",
-          src: response.resolvedUrl || src,
-          filename: response.filename,
-        });
-        if (!dlResult?.success) throw new Error(dlResult?.error || "Download failed");
-      }
-
-      if (!response.isGif) {
+      if (response.isGif) {
+        if (!response.copied && !response.downloaded) {
+          throw new Error(response.error || "GIF copy/download failed");
+        }
+      } else {
         const raw = atob(response.pngBase64);
         const bytes = new Uint8Array(raw.length);
         for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);

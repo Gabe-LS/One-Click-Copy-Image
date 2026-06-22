@@ -37,12 +37,16 @@ async function fetchImage(src) {
         return { success: true, isGif: true, copied: true };
       }
 
+      // Native host unavailable — download using the bytes we already have
+      const dataUrl = "data:image/gif;base64," + base64;
+      const dlResult = await downloadGif(dataUrl, sanitizeFilename(response.url, "gif"));
+
       return {
         success: true,
         isGif: true,
         copied: false,
-        resolvedUrl: response.url,
-        filename: sanitizeFilename(response.url, "gif"),
+        downloaded: dlResult.success,
+        error: dlResult.error,
       };
     }
 

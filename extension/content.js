@@ -124,14 +124,22 @@
       }
 
       if (response.isGif) {
-        const dlResult = await chrome.runtime.sendMessage({
-          action: "downloadGif",
-          src: response.resolvedUrl || img.src,
-          filename: response.filename,
+        // Try native clipboard (preserves animation), fall back to download
+        const nativeResult = await chrome.runtime.sendMessage({
+          action: "copyGifNative",
+          base64: response.gifBase64,
         });
 
-        if (!dlResult?.success) {
-          throw new Error(dlResult?.error || "Download failed");
+        if (!nativeResult?.success) {
+          const dlResult = await chrome.runtime.sendMessage({
+            action: "downloadGif",
+            src: response.resolvedUrl || img.src,
+            filename: response.filename,
+          });
+
+          if (!dlResult?.success) {
+            throw new Error(dlResult?.error || "Download failed");
+          }
         }
       } else {
         const raw = atob(response.pngBase64);

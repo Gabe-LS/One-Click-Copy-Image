@@ -1,6 +1,15 @@
+const NATIVE_HOST = "com.occi.clipboard_helper";
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === "fetchImage") {
     fetchImage(message.src)
+      .then((result) => sendResponse(result))
+      .catch((err) => sendResponse({ success: false, error: err.message }));
+    return true;
+  }
+
+  if (message.action === "copyGifNative") {
+    copyGifNative(message.base64)
       .then((result) => sendResponse(result))
       .catch((err) => sendResponse({ success: false, error: err.message }));
     return true;
@@ -32,9 +41,11 @@ async function fetchImage(src) {
     const isGif = blob.type === "image/gif" || contentType.includes("image/gif");
 
     if (isGif) {
+      const buf = await blob.arrayBuffer();
       return {
         success: true,
         isGif: true,
+        gifBase64: arrayBufferToBase64(buf),
         resolvedUrl,
         filename: sanitizeFilename(resolvedUrl, "gif"),
       };
@@ -61,6 +72,26 @@ async function fetchImage(src) {
   } finally {
     clearTimeout(timer);
   }
+}
+
+function copyGifNative(base64) {
+  return new Promise((resolve) => {
+    try {
+      chrome.runtime.sendNativeMessage(
+        NATIVE_HOST,
+        { action: "copyGif", base64 },
+        (response) => {
+          if (chrome.runtime.lastError) {
+            resolve({ success: false, error: chrome.runtime.lastError.message });
+          } else {
+            resolve(response || { success: false, error: "No response" });
+          }
+        }
+      );
+    } catch (err) {
+      resolve({ success: false, error: err.message });
+    }
+  });
 }
 
 async function downloadGif(src, filename) {
@@ -98,7 +129,6 @@ function sanitizeFilename(url, defaultExt) {
     const pathname = new URL(url).pathname;
     const last = pathname.split("/").pop();
     if (last) {
-      // Strip query-like suffixes, keep only safe chars
       const clean = last.replace(/[^a-zA-Z0-9._-]/g, "_").substring(0, 200);
       if (clean.includes(".")) return clean;
       return clean + "." + defaultExt;

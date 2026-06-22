@@ -8,27 +8,9 @@ Works with Chrome, Brave, Edge, and other Chromium-based browsers.
 
 ## Installation
 
-### Option 1: Download (easiest)
+Install from the [Chrome Web Store](https://chrome.google.com/webstore) (link coming soon).
 
-1. Go to the [latest release](https://github.com/Gabe-LS/One-Click-Copy-Image/releases/latest)
-2. Download the **Source code (zip)** and unzip it
-3. Open your browser's extensions page:
-   - Chrome: type `chrome://extensions` in the address bar
-   - Brave: type `brave://extensions`
-   - Edge: type `edge://extensions`
-4. Turn on **Developer mode** (toggle in the top-right corner)
-5. Click **Load unpacked**
-6. Select the `extension` folder inside the unzipped download
-
-The extension icon should appear in your toolbar.
-
-### Option 2: Clone with Git
-
-```bash
-git clone https://github.com/Gabe-LS/One-Click-Copy-Image.git
-```
-
-Then follow steps 3-6 above.
+Works on Chrome, Brave, Edge, and any Chromium-based browser.
 
 ## Usage
 

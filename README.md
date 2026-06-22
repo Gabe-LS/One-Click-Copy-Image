@@ -30,7 +30,7 @@ By default, animated GIFs are downloaded because browsers can't copy them to the
 ### macOS
 
 1. Download [occi-gif-helper-macos.zip](https://github.com/Gabe-LS/One-Click-Copy-Image/releases/latest/download/occi-gif-helper-macos.zip) and unzip it (double-click the zip file)
-2. Open **Terminal** (search "Terminal" in Spotlight)
+2. Open **Terminal** (search "Terminal" in Spotlight) (search "Terminal" in Spotlight)
 3. Type `cd ` (with a space after it), then drag the unzipped folder from Finder into the Terminal window — this fills in the path. Press Enter.
 4. Run:
 
@@ -76,7 +76,7 @@ The helper leaves no traces outside its install folder and a few small config fi
 
 **macOS:**
 
-1. Open **Terminal**
+1. Open **Terminal** (search "Terminal" in Spotlight)
 2. Run:
 
 ```bash

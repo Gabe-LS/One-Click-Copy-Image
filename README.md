@@ -67,3 +67,7 @@ npx playwright test
 ```
 
 Tests use Playwright with a real Chromium instance and the extension loaded.
+
+## Credits
+
+Icon by [Tanah Basah](https://www.flaticon.com/free-icons/ui) — Flaticon

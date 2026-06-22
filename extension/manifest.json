@@ -1,0 +1,43 @@
+{
+  "manifest_version": 3,
+  "name": "One-Click Copy Image",
+  "version": "1.0.0",
+  "description": "Copy images directly from Google Images with one click",
+  "permissions": [
+    "clipboardWrite",
+    "activeTab",
+    "downloads"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "*://www.google.com/search*",
+        "*://www.google.co.uk/search*",
+        "*://www.google.co.jp/search*",
+        "*://www.google.co.in/search*",
+        "*://www.google.co.kr/search*",
+        "*://www.google.co.id/search*",
+        "*://www.google.com.au/search*",
+        "*://www.google.com.br/search*",
+        "*://www.google.de/search*",
+        "*://www.google.fr/search*",
+        "*://www.google.it/search*",
+        "*://www.google.es/search*"
+      ],
+      "js": ["content.js"],
+      "css": ["styles.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}

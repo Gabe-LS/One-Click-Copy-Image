@@ -1,0 +1,55 @@
+.occi-copy-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: none;
+  border-radius: 20px;
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  font-family: "Google Sans", Roboto, Arial, sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s, background 0.2s, transform 0.15s;
+  pointer-events: none;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  user-select: none;
+  line-height: 1;
+}
+
+.occi-copy-btn svg {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+  flex-shrink: 0;
+}
+
+.occi-copy-btn.occi-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.occi-copy-btn:hover {
+  background: rgba(0, 0, 0, 0.85);
+  transform: scale(1.05);
+}
+
+.occi-copy-btn:active {
+  transform: scale(0.95);
+}
+
+.occi-copy-btn.occi-success {
+  background: rgba(27, 134, 72, 0.9);
+}
+
+.occi-copy-btn.occi-error {
+  background: rgba(197, 34, 31, 0.9);
+}

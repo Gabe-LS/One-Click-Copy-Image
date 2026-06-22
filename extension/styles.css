@@ -31,7 +31,7 @@
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: rgba(27, 134, 72, 0.8);
+  background: rgba(34, 197, 94, 0.8);
   transform: scaleX(0);
   transform-origin: left;
 }
@@ -68,7 +68,7 @@
 }
 
 .occi-copy-btn.occi-success {
-  background: rgba(27, 134, 72, 0.9);
+  background: rgba(34, 197, 94, 0.9);
 }
 
 .occi-copy-btn.occi-success::before {

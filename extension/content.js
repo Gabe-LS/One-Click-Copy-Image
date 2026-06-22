@@ -15,40 +15,53 @@
     catch { return false; }
   }
 
-  // --- Find large preview images on the right side of the viewport ---
+  // --- Find the single preview image to attach a button to ---
 
-  function findPreviewImages() {
-    const vw = window.innerWidth;
+  function largestImage(container) {
+    let best = null;
+    let bestArea = 0;
+    for (const img of container.querySelectorAll("img")) {
+      if (!img.src || img.naturalWidth === 0) continue;
+      const r = img.getBoundingClientRect();
+      if (r.width < 100 || r.height < 100) continue;
+      const area = r.width * r.height;
+      if (area > bestArea) { best = img; bestArea = area; }
+    }
+    return best;
+  }
+
+  function findPreviewImage() {
+    // Strategy 1: data-viewer-type is a behavioral attribute Google uses
+    // for the preview panel. Find the visible one and pick its largest image.
+    for (const panel of document.querySelectorAll("[data-viewer-type]")) {
+      const r = panel.getBoundingClientRect();
+      if (r.width < 200 || r.height < 200) continue;
+
+      const img = largestImage(panel);
+      if (img && !img.closest(".occi-has-btn")) return img;
+    }
+
+    // Strategy 2: structural fallback — find the single largest image
+    // in the right portion of the viewport (the preview panel area).
+    const rightThreshold = window.innerWidth * 0.55;
     const vh = window.innerHeight;
-    // The preview panel occupies roughly the right 40% of the viewport.
-    // Use 55% as threshold to avoid matching grid images that spill past center.
-    const rightThreshold = vw * 0.55;
-    const results = [];
+    let best = null;
+    let bestArea = 0;
 
     for (const img of document.querySelectorAll("img")) {
       if (img.closest(".occi-has-btn")) continue;
       if (!img.src || img.naturalWidth === 0) continue;
 
       const r = img.getBoundingClientRect();
-      // Preview images are substantially larger than grid thumbnails
       if (r.width < 300 || r.height < 200) continue;
       if (r.left < rightThreshold) continue;
       if (r.bottom < 0 || r.top > vh) continue;
 
-      results.push(img);
+      const area = r.width * r.height;
+      if (area > bestArea) { best = img; bestArea = area; }
     }
 
-    if (results.length === 0) {
-      for (const img of document.querySelectorAll("[data-viewer-type] img")) {
-        if (img.closest(".occi-has-btn")) continue;
-        if (!img.src || img.naturalWidth === 0) continue;
-        const r = img.getBoundingClientRect();
-        if (r.width < 150 || r.height < 150) continue;
-        results.push(img);
-      }
-    }
-
-    return results;
+    return best;
   }
 
   // --- Find a suitable positioned ancestor to anchor the button ---
@@ -167,7 +180,7 @@
     }
   }
 
-  // --- Inject buttons into preview panels ---
+  // --- Inject button on the preview image ---
 
   function attachButton(img) {
     const container = findImageContainer(img);
@@ -186,7 +199,8 @@
 
   function scanAndAttach() {
     if (!isGoogleImagesPage()) return;
-    for (const img of findPreviewImages()) attachButton(img);
+    const img = findPreviewImage();
+    if (img) attachButton(img);
   }
 
   // --- Throttled MutationObserver ---

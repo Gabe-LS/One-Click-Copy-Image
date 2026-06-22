@@ -30,7 +30,6 @@
   content: "";
   position: absolute;
   inset: 0;
-  border-radius: inherit;
   background: rgba(34, 197, 94, 0.8);
   transform: scaleX(0);
   transform-origin: left;

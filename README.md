@@ -47,8 +47,10 @@ By default, animated GIFs are downloaded because browsers can't copy them to the
 
 ### macOS
 
-1. Download [occi-gif-helper-macos.zip](https://github.com/Gabe-LS/One-Click-Copy-Image/releases/latest/download/occi-gif-helper-macos.zip) and unzip it
-2. Open Terminal, navigate to the unzipped folder, and run:
+1. Download [occi-gif-helper-macos.zip](https://github.com/Gabe-LS/One-Click-Copy-Image/releases/latest/download/occi-gif-helper-macos.zip) and unzip it (double-click the zip file)
+2. Open **Terminal** (search "Terminal" in Spotlight)
+3. Type `cd ` (with a space after it), then drag the unzipped folder from Finder into the Terminal window — this fills in the path. Press Enter.
+4. Run:
 
 ```bash
 ./install.sh YOUR_EXTENSION_ID
@@ -62,8 +64,10 @@ No admin password needed. To remove it later:
 
 ### Windows
 
-1. Download [occi-gif-helper-windows.zip](https://github.com/Gabe-LS/One-Click-Copy-Image/releases/latest/download/occi-gif-helper-windows.zip) and unzip it
-2. Open PowerShell, navigate to the unzipped folder, and run:
+1. Download [occi-gif-helper-windows.zip](https://github.com/Gabe-LS/One-Click-Copy-Image/releases/latest/download/occi-gif-helper-windows.zip) and unzip it (right-click > Extract All)
+2. Open the unzipped folder in File Explorer
+3. Click the address bar, type `powershell`, and press Enter — this opens PowerShell in that folder
+4. Run:
 
 ```powershell
 .\install.ps1 -ExtensionId YOUR_EXTENSION_ID

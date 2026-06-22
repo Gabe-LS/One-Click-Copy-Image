@@ -43,37 +43,36 @@ Then follow steps 3-6 above.
 
 ## Animated GIF clipboard support (optional)
 
-By default, animated GIFs are downloaded because browsers can't copy them to the clipboard natively. To enable true clipboard copy (so you can paste animated GIFs directly), install a small helper script:
-
-1. Download the [latest release](https://github.com/Gabe-LS/One-Click-Copy-Image/releases/latest) and unzip it
-2. Follow the instructions for your platform below
+By default, animated GIFs are downloaded because browsers can't copy them to the clipboard natively. To enable true clipboard copy (so you can paste animated GIFs directly), install a small helper script.
 
 ### macOS
 
-Open Terminal, navigate to the unzipped folder, and run:
+1. Download [occi-gif-helper-macos.zip](https://github.com/Gabe-LS/One-Click-Copy-Image/releases/latest/download/occi-gif-helper-macos.zip) and unzip it
+2. Open Terminal, navigate to the unzipped folder, and run:
 
 ```bash
-./install-macos.sh YOUR_EXTENSION_ID
+./install.sh YOUR_EXTENSION_ID
 ```
 
 No admin password needed. To remove it later:
 
 ```bash
-./install-macos.sh --uninstall
+./install.sh --uninstall
 ```
 
 ### Windows
 
-Open PowerShell, navigate to the unzipped folder, and run:
+1. Download [occi-gif-helper-windows.zip](https://github.com/Gabe-LS/One-Click-Copy-Image/releases/latest/download/occi-gif-helper-windows.zip) and unzip it
+2. Open PowerShell, navigate to the unzipped folder, and run:
 
 ```powershell
-.\install-windows.ps1 -ExtensionId YOUR_EXTENSION_ID
+.\install.ps1 -ExtensionId YOUR_EXTENSION_ID
 ```
 
 No admin needed. To remove it later:
 
 ```powershell
-.\install-windows.ps1 -Uninstall
+.\install.ps1 -Uninstall
 ```
 
 ### How to find your extension ID

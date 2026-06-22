@@ -68,7 +68,7 @@
 }
 
 .occi-copy-btn.occi-success {
-  background: rgba(34, 197, 94, 0.9);
+  background: #008000;
 }
 
 .occi-copy-btn.occi-success::before {

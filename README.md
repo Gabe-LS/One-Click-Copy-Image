@@ -43,14 +43,16 @@ Then follow steps 3-6 above.
 
 ## Animated GIF clipboard support (optional)
 
-By default, animated GIFs are downloaded because browsers can't copy them to the clipboard natively. To enable true clipboard copy (so you can paste animated GIFs directly), install the helper for your platform:
+By default, animated GIFs are downloaded because browsers can't copy them to the clipboard natively. To enable true clipboard copy (so you can paste animated GIFs directly), install a small helper script:
+
+1. Download the [latest release](https://github.com/Gabe-LS/One-Click-Copy-Image/releases/latest) and unzip it
+2. Follow the instructions for your platform below
 
 ### macOS
 
-Open Terminal and run:
+Open Terminal, navigate to the unzipped folder, and run:
 
 ```bash
-cd path/to/One-Click-Copy-Image
 ./install-macos.sh YOUR_EXTENSION_ID
 ```
 
@@ -62,10 +64,9 @@ No admin password needed. To remove it later:
 
 ### Windows
 
-Open PowerShell and run:
+Open PowerShell, navigate to the unzipped folder, and run:
 
 ```powershell
-cd path\to\One-Click-Copy-Image
 .\install-windows.ps1 -ExtensionId YOUR_EXTENSION_ID
 ```
 

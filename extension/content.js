@@ -15,6 +15,11 @@
     catch { return false; }
   }
 
+  function looksLikeGif(src) {
+    try { return new URL(src).pathname.toLowerCase().endsWith(".gif"); }
+    catch { return false; }
+  }
+
   // --- Find the single preview image to attach a button to ---
 
   function largestImage(container) {
@@ -30,9 +35,18 @@
     return best;
   }
 
+  function cleanupStaleButtons() {
+    for (const el of document.querySelectorAll(".occi-has-btn")) {
+      const r = el.getBoundingClientRect();
+      if (r.width === 0 || r.height === 0 || !el.isConnected) {
+        el.classList.remove("occi-has-btn");
+        const btn = el.querySelector(".occi-copy-btn");
+        if (btn) btn.remove();
+      }
+    }
+  }
+
   function findPreviewImage() {
-    // Strategy 1: data-viewer-type is a behavioral attribute Google uses
-    // for the preview panel. Find the visible one and pick its largest image.
     for (const panel of document.querySelectorAll("[data-viewer-type]")) {
       const r = panel.getBoundingClientRect();
       if (r.width < 200 || r.height < 200) continue;
@@ -41,8 +55,6 @@
       if (img && !img.closest(".occi-has-btn")) return img;
     }
 
-    // Strategy 2: structural fallback — find the single largest image
-    // in the right portion of the viewport (the preview panel area).
     const rightThreshold = window.innerWidth * 0.55;
     const vh = window.innerHeight;
     let best = null;
@@ -88,8 +100,13 @@
   // --- At click time, find the original (non-proxy) image URL ---
 
   function findBestImageSrc(btn) {
-    const scope = btn.parentElement?.parentElement || btn.parentElement;
-    if (!scope) return btn._targetImg?.src || null;
+    // Walk up to the nearest data-viewer-type panel, or 4 levels up
+    let scope = btn.parentElement;
+    for (let i = 0; i < 4 && scope; i++) {
+      if (scope.hasAttribute?.("data-viewer-type")) break;
+      scope = scope.parentElement;
+    }
+    if (!scope) scope = btn.parentElement;
 
     let bestReal = null;
     let bestProxy = null;
@@ -162,9 +179,10 @@
     }
 
     try {
-      // Fast path: draw the already-loaded image to canvas and copy.
-      // Works when the image has CORS headers or is same-origin.
-      if (img?.complete && img.naturalWidth > 0) {
+      // Canvas fast path: zero network, instant. Skip for GIF URLs
+      // (canvas would freeze animation to a single frame) and for
+      // proxy URLs (lower quality than the original).
+      if (img?.complete && img.naturalWidth > 0 && !looksLikeGif(src) && !isProxyUrl(img.src)) {
         try {
           await tryCanvasCopy(img);
           showButtonState(btn, "success");
@@ -172,7 +190,7 @@
         } catch {}
       }
 
-      // Slow path: fetch via background service worker (bypasses CORS)
+      // Background fetch path (bypasses CORS, detects GIFs)
       const response = await chrome.runtime.sendMessage({ action: "fetchImage", src });
 
       if (!response?.success) throw new Error(response?.error || "Fetch failed");
@@ -218,6 +236,7 @@
 
   function scanAndAttach() {
     if (!isGoogleImagesPage()) return;
+    cleanupStaleButtons();
     const img = findPreviewImage();
     if (img) attachButton(img);
   }
@@ -233,6 +252,7 @@
     });
   });
 
-  observer.observe(document.body, { childList: true, subtree: true });
+  const root = document.body || document.documentElement;
+  observer.observe(root, { childList: true, subtree: true });
   scanAndAttach();
 })();

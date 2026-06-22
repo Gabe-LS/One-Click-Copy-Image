@@ -5,7 +5,10 @@ const DOWNLOAD_TIMEOUT_MS = 60000;
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   const handler = handlers[message.action];
-  if (!handler) return;
+  if (!handler) {
+    sendResponse({ success: false, error: "Unknown action" });
+    return;
+  }
   handler(message)
     .then((result) => sendResponse(result))
     .catch((err) => sendResponse({ success: false, error: err.message }));
@@ -37,9 +40,16 @@ async function fetchImage(src) {
         return { success: true, isGif: true, copied: true };
       }
 
-      // Native host unavailable — download using the bytes we already have
-      const dataUrl = "data:image/gif;base64," + base64;
-      const dlResult = await downloadGif(dataUrl, sanitizeFilename(response.url, "gif"));
+      // Native host unavailable — download using the bytes we already have.
+      // Try data URL first, fall back to re-fetching from the original URL.
+      let dlResult = await downloadGif(
+        "data:image/gif;base64," + base64,
+        sanitizeFilename(response.url, "gif")
+      );
+
+      if (!dlResult.success) {
+        dlResult = await downloadGif(response.url, sanitizeFilename(response.url, "gif"));
+      }
 
       return {
         success: true,
@@ -91,11 +101,16 @@ function copyGifNative(base64) {
 }
 
 async function downloadGif(src, filename) {
-  const id = await chrome.downloads.download({
-    url: src,
-    filename: filename || "image.gif",
-    conflictAction: "uniquify",
-  });
+  let id;
+  try {
+    id = await chrome.downloads.download({
+      url: src,
+      filename: filename || "image.gif",
+      conflictAction: "uniquify",
+    });
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
 
   return new Promise((resolve) => {
     const timeout = setTimeout(() => {

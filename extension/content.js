@@ -20,41 +20,34 @@
     catch { return false; }
   }
 
-  // --- Find the single preview image to attach a button to ---
+  // --- Find the preview image inside a panel ---
+  // The preview image sits inside an <a role="link"> that points to the
+  // source website. Related/similar images below use role="button" instead.
+  // This structural difference is reliable across image sizes.
 
-  function largestImage(container, minSize) {
-    let best = null;
-    let bestArea = 0;
-    for (const img of container.querySelectorAll("img")) {
-      if (!img.src || img.naturalWidth === 0) continue;
-      const r = img.getBoundingClientRect();
-      if (r.width < minSize || r.height < minSize) continue;
-      const area = r.width * r.height;
-      if (area > bestArea) { best = img; bestArea = area; }
-    }
-    return best;
-  }
-
-  function cleanupStaleButtons() {
-    for (const el of document.querySelectorAll(".occi-has-btn")) {
-      const r = el.getBoundingClientRect();
-      if (r.width === 0 || r.height === 0 || !el.isConnected) {
-        el.classList.remove("occi-has-btn");
-        const btn = el.querySelector(".occi-copy-btn");
-        if (btn) btn.remove();
+  function findPreviewImageInPanel(panel) {
+    for (const link of panel.querySelectorAll('a[role="link"]')) {
+      for (const img of link.querySelectorAll("img")) {
+        if (!img.src || img.naturalWidth === 0) continue;
+        const r = img.getBoundingClientRect();
+        if (r.width < 20 || r.height < 20) continue;
+        if (!img.closest(".occi-has-btn")) return img;
       }
     }
+    return null;
   }
 
   function findPreviewImage() {
+    // Strategy 1: find the preview image inside a data-viewer-type panel
     for (const panel of document.querySelectorAll("[data-viewer-type]")) {
       const r = panel.getBoundingClientRect();
-      if (r.width < 200 || r.height < 200) continue;
+      if (r.width < 100 || r.height < 100) continue;
 
-      const img = largestImage(panel, 20);
-      if (img && !img.closest(".occi-has-btn")) return img;
+      const img = findPreviewImageInPanel(panel);
+      if (img) return img;
     }
 
+    // Strategy 2: structural fallback — largest right-side image
     const rightThreshold = window.innerWidth * 0.55;
     const vh = window.innerHeight;
     let best = null;
@@ -100,7 +93,6 @@
   // --- At click time, find the original (non-proxy) image URL ---
 
   function findBestImageSrc(btn) {
-    // Walk up to the nearest data-viewer-type panel, or 4 levels up
     let scope = btn.parentElement;
     for (let i = 0; i < 4 && scope; i++) {
       if (scope.hasAttribute?.("data-viewer-type")) break;
@@ -124,6 +116,19 @@
     return bestReal || bestProxy || btn._targetImg?.src || null;
   }
 
+  // --- Stale button cleanup ---
+
+  function cleanupStaleButtons() {
+    for (const el of document.querySelectorAll(".occi-has-btn")) {
+      const r = el.getBoundingClientRect();
+      if (r.width === 0 || r.height === 0 || !el.isConnected) {
+        el.classList.remove("occi-has-btn");
+        const btn = el.querySelector(".occi-copy-btn");
+        if (btn) btn.remove();
+      }
+    }
+  }
+
   // --- Button ---
 
   function createCopyButton() {
@@ -138,8 +143,6 @@
   function showButtonState(btn, state) {
     btn.classList.remove("occi-loading", "occi-success", "occi-error");
     if (state === "loading") {
-      // Force a reflow so the ::before resets to scaleX(0) before the
-      // transition to scaleX(0.9) kicks in.
       void btn.offsetWidth;
       btn.classList.add("occi-loading");
     } else if (state) {
@@ -188,9 +191,6 @@
     showButtonState(btn, "loading");
 
     try {
-      // Canvas fast path: zero network, instant. Skip for GIF URLs
-      // (canvas would freeze animation to a single frame) and for
-      // proxy URLs (lower quality than the original).
       if (img?.complete && img.naturalWidth > 0 && !looksLikeGif(src) && !isProxyUrl(img.src)) {
         try {
           await tryCanvasCopy(img);

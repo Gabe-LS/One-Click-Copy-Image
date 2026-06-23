@@ -21,20 +21,39 @@
   }
 
   // --- Find the preview image inside a panel ---
-  // The preview image sits inside an <a role="link"> that points to the
-  // source website. Related/similar images below use role="button" instead.
-  // This structural difference is reliable across image sizes.
+  // The preview image is wrapped in a link to the original website.
+  // Related/similar images link back to Google. Checking for an external
+  // href is more fundamental than any class, role, or data attribute —
+  // it reflects the core UX: "click to visit the source".
+
+  function isExternalLink(a) {
+    try { return !new URL(a.href).hostname.includes("google."); }
+    catch { return false; }
+  }
+
+  function isPreviewLink(a) {
+    if (isExternalLink(a)) return true;
+    if (a.getAttribute("role") === "link") return true;
+    return false;
+  }
 
   function findPreviewImageInPanel(panel) {
-    for (const link of panel.querySelectorAll('a[role="link"]')) {
+    let best = null;
+    let bestArea = 0;
+
+    for (const link of panel.querySelectorAll("a[href]")) {
+      if (!isPreviewLink(link)) continue;
       for (const img of link.querySelectorAll("img")) {
         if (!img.src || img.naturalWidth === 0) continue;
+        if (img.closest(".occi-has-btn")) continue;
         const r = img.getBoundingClientRect();
-        if (r.width < 20 || r.height < 20) continue;
-        if (!img.closest(".occi-has-btn")) return img;
+        if (r.width < 40 || r.height < 40) continue;
+        const area = r.width * r.height;
+        if (area > bestArea) { best = img; bestArea = area; }
       }
     }
-    return null;
+
+    return best;
   }
 
   function findPreviewImage() {

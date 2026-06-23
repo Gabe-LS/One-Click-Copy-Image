@@ -22,13 +22,13 @@
 
   // --- Find the single preview image to attach a button to ---
 
-  function largestImage(container) {
+  function largestImage(container, minSize) {
     let best = null;
     let bestArea = 0;
     for (const img of container.querySelectorAll("img")) {
       if (!img.src || img.naturalWidth === 0) continue;
       const r = img.getBoundingClientRect();
-      if (r.width < 100 || r.height < 100) continue;
+      if (r.width < minSize || r.height < minSize) continue;
       const area = r.width * r.height;
       if (area > bestArea) { best = img; bestArea = area; }
     }
@@ -51,7 +51,7 @@
       const r = panel.getBoundingClientRect();
       if (r.width < 200 || r.height < 200) continue;
 
-      const img = largestImage(panel);
+      const img = largestImage(panel, 20);
       if (img && !img.closest(".occi-has-btn")) return img;
     }
 

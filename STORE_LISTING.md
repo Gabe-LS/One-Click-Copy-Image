@@ -6,24 +6,22 @@ Adds a Copy button to Google Images. One click copies the full-resolution image 
 
 ## Detailed description
 
-One click. Image copied. Paste anywhere.
+One click. Full-resolution image copied to your clipboard.
 
-When you click on an image in Google Images, a preview opens on the right side of the page. This extension adds a Copy button to that preview — click it and the full-resolution image is on your clipboard, ready to paste.
+When you click on an image in Google Images, a preview opens on the right. This extension adds a Copy button to that preview — click it and the original image is on your clipboard, ready to paste:
 
-Works with:
-- JPEG, PNG, WebP — copied to clipboard as PNG
-- Animated GIFs — copied with animation preserved (requires a free optional helper) or saved to Downloads
+    JPEG, PNG, WebP → copied as PNG
+    Animated GIFs   → copied with animation preserved, or saved to Downloads
+
+Paste it into a document, chat, email, or image editor. No right-click menus, no "Save As", no extra steps.
 
 Features:
-- One-click copy from the Google Images preview panel
-- Copies the original full-resolution image, not the Google proxy thumbnail
+- Copies the original full-resolution image, not the Google thumbnail
 - Green progress bar shows copy status
 - No data collection, no analytics, no external servers
 - Works on Chrome, Brave, Edge, and any Chromium browser
-- Supports 48 Google country domains
 
-For animated GIF clipboard support (optional):
-Download the free helper from the GitHub page. It uses only built-in OS tools (bash + osascript on macOS, PowerShell on Windows). No admin rights needed.
+Animated GIF clipboard support requires a free optional helper — download it from the extension's GitHub page. No admin rights needed.
 
 ## Category
 

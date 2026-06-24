@@ -4,3 +4,4 @@ screenshots/
 test-results/
 .DS_Store
 .ruff_cache/
+store/screenshot-1280x800.psd

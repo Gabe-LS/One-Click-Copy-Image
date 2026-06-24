@@ -8,3 +8,7 @@ store/screenshot-1280x800.psd
 store/one-click-copy-image.zip
 store/
 CLAUDE.md
+tests/
+playwright.config.js
+package.json
+package-lock.json

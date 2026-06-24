@@ -15,8 +15,7 @@ When you click on an image in Google Images, a preview opens on the right. This 
 
 Paste it into a document, chat, email, or image editor. No right-click menus, no "Save As", no extra steps.
 
-Animated GIF clipboard support:
-Browsers cannot copy animated GIFs to the clipboard natively. To enable this, download a free helper script (macOS or Windows) from the project homepage (linked below) — it takes one command to install, no admin rights needed. Without the helper, animated GIFs are saved to your Downloads folder instead.
+** NOTE ** Animated GIF clipboard support requires a free helper script (macOS or Windows) — download it from the project homepage (linked below). One command to install, no admin rights needed.
 
 Features:
 - Copies the original full-resolution image, not the Google thumbnail

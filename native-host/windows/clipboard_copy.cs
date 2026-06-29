@@ -18,8 +18,9 @@ class Program {
                 var files = new StringCollection();
                 files.Add(args[0]);
                 data.SetFileDropList(files);
-                Clipboard.SetDataObject(data, true);
+                Clipboard.SetDataObject(data, true, 10, 100);
             }
+            Application.DoEvents();
             return 0;
         } catch {
             return 1;

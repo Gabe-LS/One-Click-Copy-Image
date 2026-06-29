@@ -1,6 +1,37 @@
 Add-Type -AssemblyName System.Drawing
 Add-Type -AssemblyName System.Windows.Forms
 
+Add-Type -ReferencedAssemblies @("System.Drawing", "System.Windows.Forms") -TypeDefinition @"
+using System;
+using System.Drawing;
+using System.IO;
+using System.Threading;
+using System.Windows.Forms;
+
+public class GifClipboard {
+    public static string CopyGif(byte[] gifBytes) {
+        string error = null;
+        var thread = new Thread(() => {
+            try {
+                using (var ms = new MemoryStream(gifBytes))
+                using (var image = Image.FromStream(ms)) {
+                    var data = new DataObject();
+                    data.SetData("GIF", false, new MemoryStream(gifBytes));
+                    data.SetImage(image);
+                    Clipboard.SetDataObject(data, true);
+                }
+            } catch (Exception ex) {
+                error = ex.Message;
+            }
+        });
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+        thread.Join();
+        return error;
+    }
+}
+"@
+
 function Read-NativeMessage {
     $stdin = [System.Console]::OpenStandardInput()
     $lenBuf = New-Object byte[] 4
@@ -28,22 +59,6 @@ function Send-NativeMessage($obj) {
     $stdout.Flush()
 }
 
-function Copy-GifToClipboard($base64) {
-    $gifBytes = [Convert]::FromBase64String($base64)
-    $ms = New-Object System.IO.MemoryStream(,$gifBytes)
-    $image = [System.Drawing.Image]::FromStream($ms)
-
-    $dataObj = New-Object System.Windows.Forms.DataObject
-    $dataObj.SetData("GIF", $false, $ms)
-    $dataObj.SetImage($image)
-
-    [System.Windows.Forms.Clipboard]::SetDataObject($dataObj, $true)
-
-    $image.Dispose()
-    $ms.Dispose()
-    return $true
-}
-
 try {
     $msg = Read-NativeMessage
     if (-not $msg) {
@@ -52,8 +67,13 @@ try {
     }
 
     if ($msg.action -eq "copyGif" -and $msg.base64) {
-        $ok = Copy-GifToClipboard $msg.base64
-        Send-NativeMessage @{ success = $ok }
+        $gifBytes = [Convert]::FromBase64String($msg.base64)
+        $error = [GifClipboard]::CopyGif($gifBytes)
+        if ($error) {
+            Send-NativeMessage @{ success = $false; error = $error }
+        } else {
+            Send-NativeMessage @{ success = $true }
+        }
     } else {
         Send-NativeMessage @{ success = $false; error = "Unknown action" }
     }

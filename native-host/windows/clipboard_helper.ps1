@@ -68,9 +68,9 @@ try {
 
     if ($msg.action -eq "copyGif" -and $msg.base64) {
         $gifBytes = [Convert]::FromBase64String($msg.base64)
-        $error = [GifClipboard]::CopyGif($gifBytes)
-        if ($error) {
-            Send-NativeMessage @{ success = $false; error = $error }
+        $copyErr = [GifClipboard]::CopyGif($gifBytes)
+        if ($copyErr) {
+            Send-NativeMessage @{ success = $false; error = $copyErr }
         } else {
             Send-NativeMessage @{ success = $true }
         }

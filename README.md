@@ -29,29 +29,21 @@ By default, animated GIFs are downloaded because browsers can't copy them to the
 
 ### macOS
 
-1. Download [occi-gif-helper-macos.zip](https://github.com/Gabe-LS/One-Click-Copy-Image/releases/latest/download/occi-gif-helper-macos.zip) and unzip it (double-click the zip file)
-2. Open **Terminal** (search "Terminal" in Spotlight)
-3. Type `cd ` (with a space after it), then drag the unzipped folder from Finder into the Terminal window — this fills in the path. Press Enter.
-4. Run:
+Open **Terminal** and run:
 
 ```bash
-./install.sh linegepjibpagogcacmjfcpclppgjgmm
+bash <(curl -fsSL https://raw.githubusercontent.com/Gabe-LS/One-Click-Copy-Image/main/native-host/macos/install.sh) linegepjibpagogcacmjfcpclppgjgmm
 ```
-
-No admin password needed.
 
 ### Windows
 
-1. Download [occi-gif-helper-windows.zip](https://github.com/Gabe-LS/One-Click-Copy-Image/releases/latest/download/occi-gif-helper-windows.zip) and unzip it (right-click > Extract All)
-2. Open the unzipped folder in File Explorer
-3. Click the address bar, type `powershell`, and press Enter — this opens PowerShell in that folder
-4. Run:
+Open **PowerShell** and run:
 
 ```powershell
-.\install.ps1 -ExtensionId linegepjibpagogcacmjfcpclppgjgmm
+irm https://raw.githubusercontent.com/Gabe-LS/One-Click-Copy-Image/main/native-host/windows/install.ps1 -OutFile $env:TEMP\occi-install.ps1; & $env:TEMP\occi-install.ps1 -ExtensionId linegepjibpagogcacmjfcpclppgjgmm; Remove-Item $env:TEMP\occi-install.ps1
 ```
 
-No admin needed.
+No admin needed on either platform.
 
 > **Note:** The extension ID above (`linegepjibpagogcacmjfcpclppgjgmm`) is for the Chrome Web Store version. If you loaded the extension unpacked in developer mode, your ID will be different — find it at `chrome://extensions`.
 

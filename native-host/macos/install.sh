@@ -4,8 +4,9 @@ set -euo pipefail
 HOST_NAME="com.occi.clipboard_helper"
 INSTALL_DIR="$HOME/.occi"
 HELPER="$INSTALL_DIR/clipboard_helper.sh"
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-SOURCE="$SCRIPT_DIR/clipboard_helper.sh"
+REMOTE_URL="https://raw.githubusercontent.com/Gabe-LS/One-Click-Copy-Image/main/native-host/macos/clipboard_helper.sh"
+SCRIPT_DIR="$(cd "$(dirname "$0")" 2>/dev/null && pwd || echo "")"
+SOURCE="${SCRIPT_DIR:+$SCRIPT_DIR/clipboard_helper.sh}"
 
 BROWSERS=(
   "Google/Chrome:Chrome"
@@ -60,13 +61,13 @@ install() {
     exit 1
   fi
 
-  if [ ! -f "$SOURCE" ]; then
-    echo "Error: $SOURCE not found"
-    exit 1
-  fi
-
   mkdir -p "$INSTALL_DIR"
-  cp "$SOURCE" "$HELPER"
+  if [ -n "$SOURCE" ] && [ -f "$SOURCE" ]; then
+    cp "$SOURCE" "$HELPER"
+  else
+    echo "Downloading helper..."
+    curl -fsSL "$REMOTE_URL" -o "$HELPER" || { echo "Error: download failed"; exit 1; }
+  fi
   chmod +x "$HELPER"
 
   local manifest="{

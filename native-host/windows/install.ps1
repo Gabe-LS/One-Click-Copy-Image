@@ -7,8 +7,9 @@ $HostName = "com.occi.clipboard_helper"
 $InstallDir = "$env:LOCALAPPDATA\occi"
 $Helper = "$InstallDir\clipboard_helper.ps1"
 $Launcher = "$InstallDir\clipboard_helper.bat"
-$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$Source = "$ScriptDir\clipboard_helper.ps1"
+$RemoteUrl = "https://raw.githubusercontent.com/Gabe-LS/One-Click-Copy-Image/main/native-host/windows/clipboard_helper.ps1"
+$ScriptDir = if ($MyInvocation.MyCommand.Path) { Split-Path -Parent $MyInvocation.MyCommand.Path } else { "" }
+$Source = if ($ScriptDir) { "$ScriptDir\clipboard_helper.ps1" } else { "" }
 
 $RegPaths = @(
     "HKCU:\Software\Google\Chrome\NativeMessagingHosts\$HostName"
@@ -72,13 +73,13 @@ function Do-Install {
         exit 1
     }
 
-    if (-not (Test-Path $Source)) {
-        Write-Host "Error: $Source not found"
-        exit 1
-    }
-
     New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null
-    Copy-Item $Source $Helper -Force
+    if ($Source -and (Test-Path $Source)) {
+        Copy-Item $Source $Helper -Force
+    } else {
+        Write-Host "Downloading helper..."
+        Invoke-WebRequest -Uri $RemoteUrl -OutFile $Helper -UseBasicParsing
+    }
 
     Set-Content $Launcher "@echo off`npowershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$Helper`""
 

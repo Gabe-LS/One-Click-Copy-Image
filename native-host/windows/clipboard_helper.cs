@@ -31,8 +31,8 @@ class Program {
             var proc = Process.Start(new ProcessStartInfo {
                 FileName = clipExe,
                 Arguments = "\"" + gifPath + "\"",
-                WindowStyle = ProcessWindowStyle.Hidden,
-                CreateNoWindow = true
+                UseShellExecute = true,
+                WindowStyle = ProcessWindowStyle.Hidden
             });
             proc.WaitForExit();
 

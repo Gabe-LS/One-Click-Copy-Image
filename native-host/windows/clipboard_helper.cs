@@ -15,7 +15,13 @@ class Program {
     }
 
     static int CopyToClipboard(string gifPath) {
-        if (gifPath == null || !File.Exists(gifPath)) return 1;
+        string errFile = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "occi", "last_error.txt");
+        if (gifPath == null || !File.Exists(gifPath)) {
+            File.WriteAllText(errFile, "GIF file not found: " + gifPath);
+            return 1;
+        }
         try {
             byte[] gifBytes = File.ReadAllBytes(gifPath);
             using (var ms = new MemoryStream(gifBytes))
@@ -29,8 +35,10 @@ class Program {
                 Clipboard.SetDataObject(data, true, 10, 100);
             }
             Application.DoEvents();
+            try { File.Delete(errFile); } catch {}
             return 0;
-        } catch {
+        } catch (Exception ex) {
+            File.WriteAllText(errFile, ex.ToString());
             return 1;
         }
     }
@@ -58,7 +66,7 @@ class Program {
             string gifPath = Path.Combine(installDir, "clipboard.gif");
             File.WriteAllBytes(gifPath, gifBytes);
 
-            string self = Process.GetCurrentProcess().MainModule.FileName;
+            string self = Path.Combine(installDir, "clipboard_helper.exe");
             var proc = Process.Start(new ProcessStartInfo {
                 FileName = self,
                 Arguments = "--copy \"" + gifPath + "\"",
@@ -70,7 +78,9 @@ class Program {
             if (proc.ExitCode == 0) {
                 SendNativeMessage("{\"success\":true}");
             } else {
-                SendNativeMessage("{\"success\":false,\"error\":\"Clipboard copy failed\"}");
+                string errFile = Path.Combine(installDir, "last_error.txt");
+                string errMsg = File.Exists(errFile) ? File.ReadAllText(errFile).Trim() : "Clipboard copy failed";
+                SendNativeMessage("{\"success\":false,\"error\":\"" + Escape(errMsg) + "\"}");
             }
             return 0;
         } catch (Exception ex) {

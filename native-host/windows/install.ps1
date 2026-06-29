@@ -202,7 +202,7 @@ function Do-Install {
     Set-Content $Launcher "@echo off`npowershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$Helper`""
     Write-Host "  Helper installed"
 
-    $origins = $allIds | ForEach-Object { "chrome-extension://$_/" }
+    $origins = @($allIds | ForEach-Object { "chrome-extension://$_/" })
 
     $manifest = @{
         name = $HostName

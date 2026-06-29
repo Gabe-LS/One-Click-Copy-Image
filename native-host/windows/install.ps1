@@ -11,57 +11,120 @@ $RemoteUrl = "https://raw.githubusercontent.com/Gabe-LS/One-Click-Copy-Image/mai
 $ScriptDir = if ($MyInvocation.MyCommand.Path) { Split-Path -Parent $MyInvocation.MyCommand.Path } else { "" }
 $Source = if ($ScriptDir) { "$ScriptDir\clipboard_helper.ps1" } else { "" }
 
-$RegPaths = @(
-    "HKCU:\Software\Google\Chrome\NativeMessagingHosts\$HostName"
-    "HKCU:\Software\BraveSoftware\Brave-Browser\NativeMessagingHosts\$HostName"
-    "HKCU:\Software\Microsoft\Edge\NativeMessagingHosts\$HostName"
-    "HKCU:\Software\Vivaldi\NativeMessagingHosts\$HostName"
-    "HKCU:\Software\Chromium\NativeMessagingHosts\$HostName"
-)
+$BrowserRegPaths = @{
+    "Chrome"   = "HKCU:\Software\Google\Chrome\NativeMessagingHosts\$HostName"
+    "Brave"    = "HKCU:\Software\BraveSoftware\Brave-Browser\NativeMessagingHosts\$HostName"
+    "Edge"     = "HKCU:\Software\Microsoft\Edge\NativeMessagingHosts\$HostName"
+    "Vivaldi"  = "HKCU:\Software\Vivaldi\NativeMessagingHosts\$HostName"
+    "Chromium" = "HKCU:\Software\Chromium\NativeMessagingHosts\$HostName"
+}
+
+$BrowserManifestDirs = @{
+    "Chrome" = "$env:LOCALAPPDATA\Google\Chrome\User Data\NativeMessagingHosts"
+    "Brave"  = "$env:LOCALAPPDATA\BraveSoftware\Brave-Browser\User Data\NativeMessagingHosts"
+    "Edge"   = "$env:LOCALAPPDATA\Microsoft\Edge\User Data\NativeMessagingHosts"
+}
+
+function Confirm-Action($prompt) {
+    $answer = Read-Host "$prompt [y/N]"
+    return $answer -match '^[yY]$'
+}
 
 function Do-Uninstall {
-    Write-Host "Uninstalling One-Click Copy Image native helper..."
-    $removed = 0
+    Write-Host ""
+    Write-Host "One-Click Copy Image - Uninstall GIF Helper"
+    Write-Host "--------------------------------------------"
+    Write-Host ""
+    Write-Host "This will remove the GIF clipboard helper from your PC."
+    Write-Host ""
+    Write-Host "What will be removed:"
 
-    foreach ($regPath in $RegPaths) {
-        if (Test-Path $regPath) {
-            Remove-Item $regPath -Force
-            $removed++
+    $found = $false
+
+    foreach ($browser in $BrowserRegPaths.Keys) {
+        if (Test-Path $BrowserRegPaths[$browser]) {
+            Write-Host "  - $browser browser registration"
+            $found = $true
         }
     }
 
-    $manifestDirs = @(
-        "$env:LOCALAPPDATA\Google\Chrome\User Data\NativeMessagingHosts"
-        "$env:LOCALAPPDATA\BraveSoftware\Brave-Browser\User Data\NativeMessagingHosts"
-        "$env:LOCALAPPDATA\Microsoft\Edge\User Data\NativeMessagingHosts"
-    )
-    foreach ($dir in $manifestDirs) {
-        $f = "$dir\$HostName.json"
+    foreach ($browser in $BrowserManifestDirs.Keys) {
+        $f = "$($BrowserManifestDirs[$browser])\$HostName.json"
+        if (Test-Path $f) {
+            Write-Host "  - $browser manifest file"
+            $found = $true
+        }
+    }
+
+    if (Test-Path $InstallDir) {
+        Write-Host "  - Helper files in $InstallDir"
+        $found = $true
+    }
+
+    if (-not $found) {
+        Write-Host ""
+        Write-Host "Nothing to remove - the helper is not installed."
+        return
+    }
+
+    Write-Host ""
+    Write-Host "The extension itself will not be affected. You can reinstall"
+    Write-Host "the helper at any time by running this script again."
+    Write-Host ""
+
+    if (-not (Confirm-Action "Remove the helper?")) {
+        Write-Host "Cancelled - nothing was changed."
+        return
+    }
+
+    Write-Host ""
+
+    foreach ($browser in $BrowserRegPaths.Keys) {
+        $regPath = $BrowserRegPaths[$browser]
+        if (Test-Path $regPath) {
+            Remove-Item $regPath -Force
+            Write-Host "  Removed $browser registration"
+        }
+    }
+
+    foreach ($browser in $BrowserManifestDirs.Keys) {
+        $f = "$($BrowserManifestDirs[$browser])\$HostName.json"
         if (Test-Path $f) {
             Remove-Item $f -Force
-            $removed++
+            Write-Host "  Removed $browser manifest"
         }
     }
 
     if (Test-Path $InstallDir) {
         Remove-Item $InstallDir -Recurse -Force
-        $removed++
+        Write-Host "  Removed $InstallDir"
     }
 
-    if ($removed -gt 0) {
-        Write-Host "Removed. Restart your browser."
-    } else {
-        Write-Host "Nothing to remove."
-    }
+    Write-Host ""
+    Write-Host "All done! Restart your browser to finish."
 }
 
 function Do-Install {
     param([string]$Id)
 
+    Write-Host ""
+    Write-Host "One-Click Copy Image - GIF Helper Setup"
+    Write-Host "----------------------------------------"
+    Write-Host ""
+    Write-Host "Welcome! This installs a small helper that lets the extension"
+    Write-Host "copy animated GIFs to your clipboard. Without it, GIFs are"
+    Write-Host "saved to your Downloads folder instead."
+    Write-Host ""
+    Write-Host "The helper:"
+    Write-Host "  - Runs only when you click Copy on a GIF"
+    Write-Host "  - Uses only built-in Windows tools (no extra software)"
+    Write-Host "  - Stays in your user folder (no admin needed)"
+    Write-Host "  - Is easy to remove - just re-run this script with -Uninstall"
+    Write-Host ""
+
     if (-not $Id) {
-        Write-Host ""
         Write-Host "To find your extension ID:"
-        Write-Host "  1. Open chrome://extensions or brave://extensions"
+        Write-Host "  1. Open chrome://extensions (or brave://extensions)"
         Write-Host "  2. Find 'One-Click Copy Image'"
         Write-Host "  3. Copy the ID (32 lowercase letters)"
         Write-Host ""
@@ -69,19 +132,51 @@ function Do-Install {
     }
 
     if ($Id -notmatch '^[a-z]{32}$') {
-        Write-Host "Error: extension ID must be 32 lowercase letters"
+        Write-Host ""
+        Write-Host "That doesn't look like a valid extension ID."
+        Write-Host "It should be exactly 32 lowercase letters, like: linegepjibpagogcacmjfcpclppgjgmm"
         exit 1
     }
+
+    $detectedBrowsers = @()
+    foreach ($browser in $BrowserRegPaths.Keys) {
+        $parent = Split-Path $BrowserRegPaths[$browser]
+        if (Test-Path $parent) {
+            $detectedBrowsers += $browser
+        }
+    }
+    if ($detectedBrowsers.Count -eq 0) { $detectedBrowsers = @("Chrome") }
+
+    Write-Host ""
+    Write-Host "Ready to install. Here's what will happen:"
+    Write-Host ""
+    Write-Host "  1. Copy the helper script to $InstallDir"
+    Write-Host "  2. Register it with: $($detectedBrowsers -join ', ')"
+    Write-Host ""
+
+    if (-not (Confirm-Action "Continue?")) {
+        Write-Host "Cancelled - nothing was changed."
+        return
+    }
+
+    Write-Host ""
 
     New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null
     if ($Source -and (Test-Path $Source)) {
         Copy-Item $Source $Helper -Force
     } else {
-        Write-Host "Downloading helper..."
-        Invoke-WebRequest -Uri $RemoteUrl -OutFile $Helper -UseBasicParsing
+        Write-Host "  Downloading helper..."
+        try {
+            Invoke-WebRequest -Uri $RemoteUrl -OutFile $Helper -UseBasicParsing
+        } catch {
+            Write-Host ""
+            Write-Host "Download failed. Check your internet connection and try again."
+            exit 1
+        }
     }
 
     Set-Content $Launcher "@echo off`npowershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$Helper`""
+    Write-Host "  Helper installed"
 
     $manifest = @{
         name = $HostName
@@ -95,22 +190,18 @@ function Do-Install {
     Set-Content $manifestFile $manifest -Encoding UTF8
 
     $installed = 0
-    foreach ($regPath in $RegPaths) {
+    foreach ($browser in $BrowserRegPaths.Keys) {
+        $regPath = $BrowserRegPaths[$browser]
         $parent = Split-Path $regPath
         if (-not (Test-Path $parent)) { continue }
         New-Item -Path $regPath -Force | Out-Null
         Set-ItemProperty -Path $regPath -Name "(Default)" -Value $manifestFile
-        $browser = ($regPath -split '\\')[3]
-        Write-Host "  Installed for $browser"
+        Write-Host "  Registered for $browser"
         $installed++
     }
 
-    $manifestDirs = @(
-        "$env:LOCALAPPDATA\Google\Chrome\User Data\NativeMessagingHosts"
-        "$env:LOCALAPPDATA\BraveSoftware\Brave-Browser\User Data\NativeMessagingHosts"
-        "$env:LOCALAPPDATA\Microsoft\Edge\User Data\NativeMessagingHosts"
-    )
-    foreach ($dir in $manifestDirs) {
+    foreach ($browser in $BrowserManifestDirs.Keys) {
+        $dir = $BrowserManifestDirs[$browser]
         if (Test-Path (Split-Path $dir)) {
             New-Item -ItemType Directory -Path $dir -Force | Out-Null
             Set-Content "$dir\$HostName.json" $manifest -Encoding UTF8
@@ -121,14 +212,13 @@ function Do-Install {
         $regPath = "HKCU:\Software\Google\Chrome\NativeMessagingHosts\$HostName"
         New-Item -Path $regPath -Force | Out-Null
         Set-ItemProperty -Path $regPath -Name "(Default)" -Value $manifestFile
-        Write-Host "  Installed for Chrome (default)"
+        Write-Host "  Registered for Chrome"
     }
 
     Write-Host ""
-    Write-Host "Helper: $Helper"
-    Write-Host "Extension ID: $Id"
+    Write-Host "All done! Restart your browser, and GIF copying will work."
     Write-Host ""
-    Write-Host "Restart your browser to activate."
+    Write-Host "To remove the helper later, run this script again with -Uninstall"
 }
 
 if ($Uninstall) {

@@ -6,7 +6,6 @@ param(
 $HostName = "com.occi.clipboard_helper"
 $InstallDir = "$env:LOCALAPPDATA\occi"
 $HostExe = "$InstallDir\clipboard_helper.exe"
-$ClipExe = "$InstallDir\clipboard_copy.exe"
 $Launcher = "$InstallDir\clipboard_helper.bat"
 $RemoteBase = "https://raw.githubusercontent.com/Gabe-LS/One-Click-Copy-Image/main/native-host/windows"
 $ScriptDir = if ($MyInvocation.MyCommand.Path) { Split-Path -Parent $MyInvocation.MyCommand.Path } else { "" }
@@ -187,40 +186,32 @@ function Do-Install {
 
     New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null
 
-    $csc = Join-Path ([System.Runtime.InteropServices.RuntimeEnvironment]::GetRuntimeDirectory()) "csc.exe"
-    $csFiles = @("clipboard_helper.cs", "clipboard_copy.cs")
-
-    foreach ($csFile in $csFiles) {
-        $localFile = if ($ScriptDir) { "$ScriptDir\$csFile" } else { "" }
-        $tmpCs = "$InstallDir\$csFile"
-        if ($localFile -and (Test-Path $localFile)) {
-            Copy-Item $localFile $tmpCs -Force
-        } else {
-            Write-Host "  Downloading $csFile..."
-            try {
-                Invoke-WebRequest -Uri "$RemoteBase/$csFile" -OutFile $tmpCs -UseBasicParsing
-            } catch {
-                Write-Host ""
-                Write-Host "Download failed. Check your internet connection and try again."
-                exit 1
-            }
+    $csFile = "clipboard_helper.cs"
+    $localFile = if ($ScriptDir) { "$ScriptDir\$csFile" } else { "" }
+    $tmpCs = "$InstallDir\$csFile"
+    if ($localFile -and (Test-Path $localFile)) {
+        Copy-Item $localFile $tmpCs -Force
+    } else {
+        Write-Host "  Downloading helper..."
+        try {
+            Invoke-WebRequest -Uri "$RemoteBase/$csFile" -OutFile $tmpCs -UseBasicParsing
+        } catch {
+            Write-Host ""
+            Write-Host "Download failed. Check your internet connection and try again."
+            exit 1
         }
     }
 
     Write-Host "  Compiling helper..."
-    $outExes = @(
-        @{ src = "$InstallDir\clipboard_helper.cs"; out = $HostExe; refs = "" },
-        @{ src = "$InstallDir\clipboard_copy.cs"; out = $ClipExe; refs = "/r:System.Windows.Forms.dll /r:System.Drawing.dll" }
-    )
-    foreach ($build in $outExes) {
-        $cscArgs = "/nologo /out:`"$($build.out)`" $($build.refs) `"$($build.src)`""
-        $compile = Start-Process $csc -ArgumentList $cscArgs -Wait -PassThru -WindowStyle Hidden
-        if ($compile.ExitCode -ne 0) {
-            Write-Host "  Compilation failed. Make sure .NET Framework is installed."
-            exit 1
-        }
-        Remove-Item $build.src -Force -ErrorAction SilentlyContinue
+    $csc = Join-Path ([System.Runtime.InteropServices.RuntimeEnvironment]::GetRuntimeDirectory()) "csc.exe"
+    $cscArgs = "/nologo /out:`"$HostExe`" /r:System.Windows.Forms.dll /r:System.Drawing.dll `"$tmpCs`""
+    $compile = Start-Process $csc -ArgumentList $cscArgs -Wait -PassThru -WindowStyle Hidden
+    if ($compile.ExitCode -ne 0) {
+        Write-Host "  Compilation failed. Make sure .NET Framework is installed."
+        exit 1
     }
+    Remove-Item $tmpCs -Force -ErrorAction SilentlyContinue
+    Remove-Item "$InstallDir\clipboard_copy.exe" -Force -ErrorAction SilentlyContinue
     Write-Host "  Helper compiled"
 
     Set-Content $Launcher "@echo off`n`"$HostExe`""

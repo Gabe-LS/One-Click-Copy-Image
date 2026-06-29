@@ -1,10 +1,41 @@
 using System;
+using System.Collections.Specialized;
 using System.Diagnostics;
+using System.Drawing;
 using System.IO;
 using System.Text;
+using System.Windows.Forms;
 
 class Program {
-    static int Main() {
+    [STAThread]
+    static int Main(string[] args) {
+        if (args.Length > 0 && args[0] == "--copy")
+            return CopyToClipboard(args.Length > 1 ? args[1] : null);
+        return NativeHost();
+    }
+
+    static int CopyToClipboard(string gifPath) {
+        if (gifPath == null || !File.Exists(gifPath)) return 1;
+        try {
+            byte[] gifBytes = File.ReadAllBytes(gifPath);
+            using (var ms = new MemoryStream(gifBytes))
+            using (var image = Image.FromStream(ms)) {
+                var data = new DataObject();
+                data.SetData("GIF", false, new MemoryStream(gifBytes));
+                data.SetImage(image);
+                var files = new StringCollection();
+                files.Add(gifPath);
+                data.SetFileDropList(files);
+                Clipboard.SetDataObject(data, true, 10, 100);
+            }
+            Application.DoEvents();
+            return 0;
+        } catch {
+            return 1;
+        }
+    }
+
+    static int NativeHost() {
         try {
             byte[] msg = ReadNativeMessage();
             if (msg == null) {
@@ -13,8 +44,8 @@ class Program {
             }
 
             string json = Encoding.UTF8.GetString(msg);
-            string base64 = ExtractBase64(json);
-            string action = ExtractAction(json);
+            string action = ExtractJsonString(json, "action");
+            string base64 = ExtractJsonString(json, "base64");
 
             if (action != "copyGif" || base64 == null) {
                 SendNativeMessage("{\"success\":false,\"error\":\"Unknown action\"}");
@@ -27,10 +58,10 @@ class Program {
             string gifPath = Path.Combine(installDir, "clipboard.gif");
             File.WriteAllBytes(gifPath, gifBytes);
 
-            string clipExe = Path.Combine(installDir, "clipboard_copy.exe");
+            string self = Process.GetCurrentProcess().MainModule.FileName;
             var proc = Process.Start(new ProcessStartInfo {
-                FileName = clipExe,
-                Arguments = "\"" + gifPath + "\"",
+                FileName = self,
+                Arguments = "--copy \"" + gifPath + "\"",
                 UseShellExecute = true,
                 WindowStyle = ProcessWindowStyle.Hidden
             });
@@ -70,14 +101,6 @@ class Program {
         stdout.Write(BitConverter.GetBytes((uint)bytes.Length), 0, 4);
         stdout.Write(bytes, 0, bytes.Length);
         stdout.Flush();
-    }
-
-    static string ExtractAction(string json) {
-        return ExtractJsonString(json, "action");
-    }
-
-    static string ExtractBase64(string json) {
-        return ExtractJsonString(json, "base64");
     }
 
     static string ExtractJsonString(string json, string key) {

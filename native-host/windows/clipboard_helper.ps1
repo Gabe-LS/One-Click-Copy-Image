@@ -33,11 +33,16 @@ function Copy-GifToClipboard($base64) {
     $clipScript = @"
 Add-Type -AssemblyName System.Drawing
 Add-Type -AssemblyName System.Windows.Forms
-`$ms = New-Object System.IO.MemoryStream(,[System.IO.File]::ReadAllBytes('$tmpFile'))
+`$gifPath = '$tmpFile'
+`$gifBytes = [System.IO.File]::ReadAllBytes(`$gifPath)
+`$ms = New-Object System.IO.MemoryStream(,`$gifBytes)
 `$image = [System.Drawing.Image]::FromStream(`$ms)
 `$data = New-Object System.Windows.Forms.DataObject
-`$data.SetData('GIF', `$false, (New-Object System.IO.MemoryStream(,[System.IO.File]::ReadAllBytes('$tmpFile'))))
+`$data.SetData('GIF', `$false, (New-Object System.IO.MemoryStream(,`$gifBytes)))
 `$data.SetImage(`$image)
+`$files = New-Object System.Collections.Specialized.StringCollection
+`$files.Add(`$gifPath)
+`$data.SetFileDropList(`$files)
 [System.Windows.Forms.Clipboard]::SetDataObject(`$data, `$true)
 `$image.Dispose()
 `$ms.Dispose()

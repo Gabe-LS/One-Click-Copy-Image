@@ -40,7 +40,7 @@ bash <(curl -fsSL https://raw.githubusercontent.com/Gabe-LS/One-Click-Copy-Image
 Open **PowerShell** and run:
 
 ```powershell
-irm https://raw.githubusercontent.com/Gabe-LS/One-Click-Copy-Image/main/native-host/windows/install.ps1 -OutFile $env:TEMP\occi-install.ps1; & $env:TEMP\occi-install.ps1 -ExtensionId linegepjibpagogcacmjfcpclppgjgmm; Remove-Item $env:TEMP\occi-install.ps1
+irm https://raw.githubusercontent.com/Gabe-LS/One-Click-Copy-Image/main/native-host/windows/install.ps1 -OutFile $env:TEMP\occi-install.ps1; powershell -ExecutionPolicy Bypass -File $env:TEMP\occi-install.ps1 -ExtensionId linegepjibpagogcacmjfcpclppgjgmm; Remove-Item $env:TEMP\occi-install.ps1
 ```
 
 No admin needed on either platform.
@@ -59,33 +59,19 @@ After installing the helper, **restart your browser** (fully quit and reopen) fo
 
 ### Remove the GIF helper (if installed)
 
-The helper leaves no traces outside its install folder and a few small config files. To remove everything:
-
-**macOS:**
-
-1. Open **Terminal** (search "Terminal" in Spotlight)
-2. Run:
+**macOS** — open Terminal and run:
 
 ```bash
-~/.occi/uninstall.sh
+bash <(curl -fsSL https://raw.githubusercontent.com/Gabe-LS/One-Click-Copy-Image/main/native-host/macos/install.sh) --uninstall
 ```
 
-3. Restart your browser
-
-This deletes the `~/.occi/` folder and removes the config files from all browsers.
-
-**Windows:**
-
-1. Press `Win+R`, type `powershell`, press Enter
-2. Run:
+**Windows** — open PowerShell and run:
 
 ```powershell
-& "$env:LOCALAPPDATA\occi\uninstall.ps1"
+irm https://raw.githubusercontent.com/Gabe-LS/One-Click-Copy-Image/main/native-host/windows/install.ps1 -OutFile $env:TEMP\occi-install.ps1; powershell -ExecutionPolicy Bypass -File $env:TEMP\occi-install.ps1 -Uninstall; Remove-Item $env:TEMP\occi-install.ps1
 ```
 
-3. Restart your browser
-
-This deletes the `%LOCALAPPDATA%\occi\` folder, removes config files, and cleans up registry entries.
+Restart your browser after uninstalling.
 
 ## Development
 

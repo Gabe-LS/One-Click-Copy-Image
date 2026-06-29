@@ -194,7 +194,7 @@ install() {
   echo "All done! Restart your browser, and GIF copying will work."
   echo ""
   echo "To remove the helper later, run:"
-  echo "  ./install.sh --uninstall"
+  echo '  bash <(curl -fsSL https://raw.githubusercontent.com/Gabe-LS/One-Click-Copy-Image/main/native-host/macos/install.sh) --uninstall'
 }
 
 case "${1:-}" in

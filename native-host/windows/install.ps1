@@ -218,7 +218,8 @@ function Do-Install {
     Write-Host ""
     Write-Host "All done! Restart your browser, and GIF copying will work."
     Write-Host ""
-    Write-Host "To remove the helper later, run this script again with -Uninstall"
+    Write-Host "To remove the helper later, run:"
+    Write-Host "  irm https://raw.githubusercontent.com/Gabe-LS/One-Click-Copy-Image/main/native-host/windows/install.ps1 -OutFile `$env:TEMP\occi-install.ps1; powershell -ExecutionPolicy Bypass -File `$env:TEMP\occi-install.ps1 -Uninstall; Remove-Item `$env:TEMP\occi-install.ps1"
 }
 
 if ($Uninstall) {

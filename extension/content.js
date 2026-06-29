@@ -207,6 +207,20 @@
       return;
     }
 
+    if (e.altKey) {
+      showButtonState(btn, "loading");
+      try {
+        const response = await chrome.runtime.sendMessage({ action: "downloadImage", src });
+        showButtonState(btn, response?.success ? "success" : "error");
+      } catch (err) {
+        console.error("[One-Click Copy Image]", err);
+        showButtonState(btn, "error");
+      } finally {
+        busy = false;
+      }
+      return;
+    }
+
     showButtonState(btn, "loading");
 
     try {

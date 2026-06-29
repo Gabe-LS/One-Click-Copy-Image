@@ -17,6 +17,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 const handlers = {
   fetchImage: (msg) => fetchImage(msg.src),
+  downloadImage: (msg) => downloadImage(msg.src),
   downloadGif: (msg) => downloadGif(msg.src, msg.filename),
 };
 
@@ -98,6 +99,35 @@ function copyGifNative(base64) {
       resolve({ success: false, error: err.message });
     }
   });
+}
+
+async function downloadImage(src) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(src, { signal: controller.signal });
+    if (!response.ok) throw new Error(`Fetch failed: ${response.status}`);
+
+    const contentType = response.headers.get("content-type") || "";
+    const blob = await response.blob();
+    const ext = contentType.includes("gif") ? "gif"
+      : contentType.includes("png") ? "png"
+      : contentType.includes("webp") ? "webp"
+      : "jpg";
+    const filename = sanitizeFilename(response.url, ext);
+
+    const reader = new FileReader();
+    const dataUrl = await new Promise((res, rej) => {
+      reader.onload = () => res(reader.result);
+      reader.onerror = rej;
+      reader.readAsDataURL(blob);
+    });
+
+    return downloadGif(dataUrl, filename);
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 async function downloadGif(src, filename) {

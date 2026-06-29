@@ -25,28 +25,31 @@ MSG=$(read_msg)
 B64=$(printf '%s' "$MSG" | /usr/bin/python3 -c "import sys,json;print(json.load(sys.stdin).get('base64',''))" 2>/dev/null)
 [ -z "$B64" ] && { send_msg '{"success":false,"error":"no base64"}'; exit 1; }
 
-TMPFILE=$(mktemp /tmp/occi.XXXXXX.gif)
-printf '%s' "$B64" | base64 -d > "$TMPFILE" 2>/dev/null
+GIFFILE="$HOME/.occi/clipboard.gif"
+mkdir -p "$HOME/.occi"
+printf '%s' "$B64" | base64 -d > "$GIFFILE" 2>/dev/null
 
 RESULT=$(/usr/bin/osascript -l JavaScript -e "
 ObjC.import('AppKit');
-var data = $.NSData.dataWithContentsOfFile('$TMPFILE');
+ObjC.import('Foundation');
+var gifPath = '$GIFFILE';
+var data = $.NSData.dataWithContentsOfFile(gifPath);
 var pb = $.NSPasteboard.generalPasteboard;
 pb.clearContents;
+
+var fileURL = $.NSURL.fileURLWithPath(gifPath);
+pb.writeObjects(\$([fileURL]));
+
+pb.addTypesOwner(\$(['com.compuserve.gif', 'public.tiff']), null);
+pb.setDataForType(data, 'com.compuserve.gif');
+
 var image = $.NSImage.alloc.initWithData(data);
 var tiff = image ? image.TIFFRepresentation : null;
 if (tiff && !tiff.isNil()) {
-    pb.declareTypesOwner(\$(['com.compuserve.gif', 'public.tiff']), null);
-    pb.setDataForType(data, 'com.compuserve.gif');
     pb.setDataForType(tiff, 'public.tiff');
-} else {
-    pb.declareTypesOwner(\$(['com.compuserve.gif']), null);
-    pb.setDataForType(data, 'com.compuserve.gif');
 }
 'ok';
 " 2>&1)
-
-rm -f "$TMPFILE"
 
 if [ "$RESULT" = "ok" ]; then
     send_msg '{"success":true}'

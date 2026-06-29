@@ -21,6 +21,10 @@ BROWSERS=(
 # --- Safety: validate all paths before any write/delete ---
 
 validate_install_dir() {
+  if [ -z "$HOME" ] || [ "$HOME" = "/" ]; then
+    echo "FATAL: \$HOME is empty or root. Cannot proceed safely."
+    exit 1
+  fi
   if [ -z "$INSTALL_DIR" ] || [ "$INSTALL_DIR" = "/" ] || [ "$INSTALL_DIR" = "$HOME" ]; then
     echo "FATAL: install directory path is invalid: '$INSTALL_DIR'"
     exit 1
@@ -29,6 +33,12 @@ validate_install_dir() {
     "$HOME"/.occi) ;; # expected
     *) echo "FATAL: install directory is not under ~/.occi: '$INSTALL_DIR'"; exit 1 ;;
   esac
+  if [ -L "$INSTALL_DIR" ]; then
+    echo "FATAL: '$INSTALL_DIR' is a symbolic link. Refusing to proceed."
+    echo "If you did not create this symlink, remove it and try again:"
+    echo "  rm '$INSTALL_DIR'"
+    exit 1
+  fi
 }
 
 validate_manifest_path() {
@@ -76,7 +86,7 @@ confirm() {
 get_existing_ids() {
   local manifest_file="$INSTALL_DIR/$HOST_NAME.json"
   if [ -f "$manifest_file" ]; then
-    grep -o 'chrome-extension://[a-z]*/\?' "$manifest_file" | sed 's|chrome-extension://||;s|/||' || true
+    grep -oE 'chrome-extension://[a-z]{32}/?' "$manifest_file" | sed 's|chrome-extension://||;s|/||' || true
   fi
 }
 

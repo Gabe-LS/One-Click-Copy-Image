@@ -4,7 +4,7 @@ param(
 )
 
 $HostName = "com.occi.clipboard_helper"
-$InstallDir = "$env:LOCALAPPDATA\occi"
+$InstallDir = [System.IO.Path]::GetFullPath("$env:LOCALAPPDATA\occi")
 $HostExe = "$InstallDir\clipboard_helper.exe"
 $Launcher = "$InstallDir\clipboard_helper.bat"
 $RemoteBase = "https://raw.githubusercontent.com/Gabe-LS/One-Click-Copy-Image/main/native-host/windows"
@@ -27,19 +27,32 @@ $BrowserManifestDirs = @{
 # --- Safety: validate paths and content before any write/delete ---
 
 function Assert-ValidInstallDir {
+    if (-not $env:LOCALAPPDATA -or $env:LOCALAPPDATA -eq "\") {
+        Write-Host "FATAL: %LOCALAPPDATA% is empty or invalid. Cannot proceed safely."
+        exit 1
+    }
     if (-not $InstallDir -or $InstallDir -eq "\" -or $InstallDir -eq $env:LOCALAPPDATA) {
         Write-Host "FATAL: Install directory path is invalid: '$InstallDir'"
         exit 1
     }
-    $expected = Join-Path $env:LOCALAPPDATA "occi"
+    $expected = [System.IO.Path]::GetFullPath("$env:LOCALAPPDATA\occi")
     if ($InstallDir -ne $expected) {
         Write-Host "FATAL: Install directory is not the expected path: '$InstallDir'"
+        exit 1
+    }
+    $item = Get-Item $InstallDir -ErrorAction SilentlyContinue
+    if ($item -and $item.LinkType) {
+        Write-Host "FATAL: '$InstallDir' is a symbolic link or junction. Refusing to proceed."
+        Write-Host "If you did not create this link, remove it and try again."
         exit 1
     }
 }
 
 function Assert-ValidManifestPath($path) {
-    if ($path -notmatch [regex]::Escape($env:LOCALAPPDATA) -or $path -notmatch "$([regex]::Escape($HostName))\.json$") {
+    $normalized = [System.IO.Path]::GetFullPath($path)
+    $expectedBase = [System.IO.Path]::GetFullPath($env:LOCALAPPDATA)
+    if (-not $normalized.StartsWith($expectedBase, [System.StringComparison]::OrdinalIgnoreCase) -or
+        $normalized -notmatch "$([regex]::Escape($HostName))\.json$") {
         Write-Host "FATAL: Manifest path is outside expected location: '$path'"
         exit 1
     }

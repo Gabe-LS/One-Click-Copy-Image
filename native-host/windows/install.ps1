@@ -7,9 +7,14 @@ $HostName = "com.occi.clipboard_helper"
 $InstallDir = "$env:LOCALAPPDATA\occi"
 $Helper = "$InstallDir\clipboard_helper.ps1"
 $Launcher = "$InstallDir\clipboard_helper.bat"
-$RemoteUrl = "https://raw.githubusercontent.com/Gabe-LS/One-Click-Copy-Image/main/native-host/windows/clipboard_helper.ps1"
+$RemoteBase = "https://raw.githubusercontent.com/Gabe-LS/One-Click-Copy-Image/main/native-host/windows"
+$RemoteUrl = "$RemoteBase/clipboard_helper.ps1"
+$RemoteCsUrl = "$RemoteBase/clipboard_copy.cs"
+$ClipExe = "$InstallDir\clipboard_copy.exe"
+$ClipCs = "$InstallDir\clipboard_copy.cs"
 $ScriptDir = if ($MyInvocation.MyCommand.Path) { Split-Path -Parent $MyInvocation.MyCommand.Path } else { "" }
 $Source = if ($ScriptDir) { "$ScriptDir\clipboard_helper.ps1" } else { "" }
+$SourceCs = if ($ScriptDir) { "$ScriptDir\clipboard_copy.cs" } else { "" }
 
 $BrowserRegPaths = @{
     "Chrome"   = "HKCU:\Software\Google\Chrome\NativeMessagingHosts\$HostName"
@@ -197,6 +202,30 @@ function Do-Install {
             Write-Host "Download failed. Check your internet connection and try again."
             exit 1
         }
+    }
+
+    if ($SourceCs -and (Test-Path $SourceCs)) {
+        Copy-Item $SourceCs $ClipCs -Force
+    } else {
+        Write-Host "  Downloading clipboard tool..."
+        try {
+            Invoke-WebRequest -Uri $RemoteCsUrl -OutFile $ClipCs -UseBasicParsing
+        } catch {
+            Write-Host ""
+            Write-Host "Download failed. Check your internet connection and try again."
+            exit 1
+        }
+    }
+
+    Write-Host "  Compiling clipboard tool..."
+    $csc = Join-Path ([System.Runtime.InteropServices.RuntimeEnvironment]::GetRuntimeDirectory()) "csc.exe"
+    $cscArgs = "/nologo /out:`"$ClipExe`" /r:System.Windows.Forms.dll /r:System.Drawing.dll `"$ClipCs`""
+    $compile = Start-Process $csc -ArgumentList $cscArgs -Wait -PassThru -WindowStyle Hidden
+    if ($compile.ExitCode -ne 0) {
+        Write-Host "  Compilation failed. Falling back to PowerShell mode (slower)."
+    } else {
+        Remove-Item $ClipCs -Force -ErrorAction SilentlyContinue
+        Write-Host "  Clipboard tool compiled"
     }
 
     Set-Content $Launcher "@echo off`npowershell.exe -NoProfile -STA -ExecutionPolicy Bypass -File `"$Helper`""

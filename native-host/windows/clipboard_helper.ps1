@@ -27,8 +27,15 @@ function Send-NativeMessage($obj) {
 
 function Copy-GifToClipboard($base64) {
     $gifBytes = [Convert]::FromBase64String($base64)
-    $tmpFile = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), "occi-clipboard.gif")
+    $installDir = [System.IO.Path]::Combine($env:LOCALAPPDATA, "occi")
+    $tmpFile = [System.IO.Path]::Combine($installDir, "clipboard.gif")
     [System.IO.File]::WriteAllBytes($tmpFile, $gifBytes)
+
+    $clipExe = [System.IO.Path]::Combine($installDir, "clipboard_copy.exe")
+    if ([System.IO.File]::Exists($clipExe)) {
+        $proc = Start-Process $clipExe -ArgumentList "`"$tmpFile`"" -Wait -PassThru -WindowStyle Hidden
+        return $proc.ExitCode -eq 0
+    }
 
     $clipScript = @"
 Add-Type -AssemblyName System.Drawing

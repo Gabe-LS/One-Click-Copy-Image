@@ -30,6 +30,16 @@ function Confirm-Action($prompt) {
     return $answer -match '^[yY]$'
 }
 
+function Get-ExistingIds {
+    $manifestFile = "$InstallDir\$HostName.json"
+    if (Test-Path $manifestFile) {
+        $content = Get-Content $manifestFile -Raw
+        $ids = [regex]::Matches($content, 'chrome-extension://([a-z]{32})/') | ForEach-Object { $_.Groups[1].Value }
+        return @($ids)
+    }
+    return @()
+}
+
 function Do-Uninstall {
     Write-Host ""
     Write-Host "One-Click Copy Image - Uninstall GIF Helper"
@@ -119,7 +129,7 @@ function Do-Install {
     Write-Host "  - Runs only when you click Copy on a GIF"
     Write-Host "  - Uses only built-in Windows tools (no extra software)"
     Write-Host "  - Stays in your user folder (no admin needed)"
-    Write-Host "  - Is easy to remove - just re-run this script with -Uninstall"
+    Write-Host "  - Is easy to remove (see instructions at the end)"
     Write-Host ""
 
     if (-not $Id) {
@@ -138,6 +148,14 @@ function Do-Install {
         exit 1
     }
 
+    $allIds = @($Id)
+    $existingIds = @(Get-ExistingIds)
+    foreach ($existing in $existingIds) {
+        if ($existing -and $existing -ne $Id) {
+            $allIds += $existing
+        }
+    }
+
     $detectedBrowsers = @()
     foreach ($browser in $BrowserRegPaths.Keys) {
         $parent = Split-Path $BrowserRegPaths[$browser]
@@ -152,6 +170,12 @@ function Do-Install {
     Write-Host ""
     Write-Host "  1. Copy the helper script to $InstallDir"
     Write-Host "  2. Register it with: $($detectedBrowsers -join ', ')"
+    if ($allIds.Count -gt 1) {
+        Write-Host "  3. Allowed extension IDs:"
+        foreach ($id in $allIds) {
+            Write-Host "     - $id"
+        }
+    }
     Write-Host ""
 
     if (-not (Confirm-Action "Continue?")) {
@@ -178,12 +202,14 @@ function Do-Install {
     Set-Content $Launcher "@echo off`npowershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$Helper`""
     Write-Host "  Helper installed"
 
+    $origins = $allIds | ForEach-Object { "chrome-extension://$_/" }
+
     $manifest = @{
         name = $HostName
         description = "Clipboard helper for One-Click Copy Image"
         path = $Launcher
         type = "stdio"
-        allowed_origins = @("chrome-extension://$Id/")
+        allowed_origins = $origins
     } | ConvertTo-Json
 
     $manifestFile = "$InstallDir\$HostName.json"
@@ -218,7 +244,7 @@ function Do-Install {
     Write-Host ""
     Write-Host "All done! Restart your browser, and GIF copying will work."
     Write-Host ""
-    Write-Host "To remove the helper later, run:"
+    Write-Host "To remove the helper, run:"
     Write-Host "  irm https://raw.githubusercontent.com/Gabe-LS/One-Click-Copy-Image/main/native-host/windows/install.ps1 -OutFile `$env:TEMP\occi-install.ps1; powershell -ExecutionPolicy Bypass -File `$env:TEMP\occi-install.ps1 -Uninstall; Remove-Item `$env:TEMP\occi-install.ps1"
 }
 

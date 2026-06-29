@@ -27,6 +27,13 @@ confirm() {
   esac
 }
 
+get_existing_ids() {
+  local manifest_file="$INSTALL_DIR/$HOST_NAME.json"
+  if [ -f "$manifest_file" ]; then
+    grep -o 'chrome-extension://[a-z]*/\?' "$manifest_file" | sed 's|chrome-extension://||;s|/||' || true
+  fi
+}
+
 uninstall() {
   echo ""
   echo "One-Click Copy Image — Uninstall GIF Helper"
@@ -105,7 +112,7 @@ install() {
   echo "  - Runs only when you click Copy on a GIF"
   echo "  - Uses only built-in macOS tools (no extra software)"
   echo "  - Stays in your home folder (no admin password needed)"
-  echo "  - Is easy to remove — just run: ./install.sh --uninstall"
+  echo "  - Is easy to remove (see instructions at the end)"
   echo ""
 
   if [ -z "$ext_id" ]; then
@@ -124,6 +131,17 @@ install() {
     exit 1
   fi
 
+  local all_ids=("$ext_id")
+  local existing
+  existing=$(get_existing_ids)
+  if [ -n "$existing" ]; then
+    while IFS= read -r id; do
+      if [ "$id" != "$ext_id" ]; then
+        all_ids+=("$id")
+      fi
+    done <<< "$existing"
+  fi
+
   local detected_browsers=()
   for entry in "${BROWSERS[@]}"; do
     local dir_suffix="${entry%%:*}"
@@ -139,6 +157,12 @@ install() {
   echo ""
   echo "  1. Copy the helper script to $INSTALL_DIR"
   echo "  2. Register it with: ${detected_browsers[*]:-Chrome}"
+  if [ ${#all_ids[@]} -gt 1 ]; then
+    echo "  3. Allowed extension IDs:"
+    for id in "${all_ids[@]}"; do
+      echo "     - $id"
+    done
+  fi
   echo ""
 
   if ! confirm "Continue?"; then
@@ -158,15 +182,26 @@ install() {
   chmod +x "$HELPER"
   echo "  Helper installed"
 
+  local origins=""
+  for i in "${!all_ids[@]}"; do
+    if [ "$i" -gt 0 ]; then
+      origins="$origins,"
+    fi
+    origins="$origins
+    \"chrome-extension://${all_ids[$i]}/\""
+  done
+
   local manifest="{
   \"name\": \"$HOST_NAME\",
   \"description\": \"Clipboard helper for One-Click Copy Image\",
   \"path\": \"$HELPER\",
   \"type\": \"stdio\",
-  \"allowed_origins\": [
-    \"chrome-extension://$ext_id/\"
+  \"allowed_origins\": [$origins
   ]
 }"
+
+  # Save a copy for ID tracking
+  echo "$manifest" > "$INSTALL_DIR/$HOST_NAME.json"
 
   local installed=0
   for entry in "${BROWSERS[@]}"; do
@@ -193,7 +228,7 @@ install() {
   echo ""
   echo "All done! Restart your browser, and GIF copying will work."
   echo ""
-  echo "To remove the helper later, run:"
+  echo "To remove the helper, run:"
   echo '  bash <(curl -fsSL https://raw.githubusercontent.com/Gabe-LS/One-Click-Copy-Image/main/native-host/macos/install.sh) --uninstall'
 }
 

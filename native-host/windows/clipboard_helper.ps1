@@ -1,37 +1,3 @@
-Add-Type -AssemblyName System.Drawing
-Add-Type -AssemblyName System.Windows.Forms
-
-Add-Type -ReferencedAssemblies @("System.Drawing", "System.Windows.Forms") -TypeDefinition @"
-using System;
-using System.Drawing;
-using System.IO;
-using System.Threading;
-using System.Windows.Forms;
-
-public class GifClipboard {
-    public static string CopyGif(byte[] gifBytes) {
-        string error = null;
-        var thread = new Thread(() => {
-            try {
-                using (var ms = new MemoryStream(gifBytes))
-                using (var image = Image.FromStream(ms)) {
-                    var data = new DataObject();
-                    data.SetData("GIF", false, new MemoryStream(gifBytes));
-                    data.SetImage(image);
-                    Clipboard.SetDataObject(data, true);
-                }
-            } catch (Exception ex) {
-                error = ex.Message;
-            }
-        });
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-        thread.Join();
-        return error;
-    }
-}
-"@
-
 function Read-NativeMessage {
     $stdin = [System.Console]::OpenStandardInput()
     $lenBuf = New-Object byte[] 4
@@ -59,6 +25,28 @@ function Send-NativeMessage($obj) {
     $stdout.Flush()
 }
 
+function Copy-GifToClipboard($base64) {
+    $gifBytes = [Convert]::FromBase64String($base64)
+    $tmpFile = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), "occi-clipboard.gif")
+    [System.IO.File]::WriteAllBytes($tmpFile, $gifBytes)
+
+    $clipScript = @"
+Add-Type -AssemblyName System.Drawing
+Add-Type -AssemblyName System.Windows.Forms
+`$ms = New-Object System.IO.MemoryStream(,[System.IO.File]::ReadAllBytes('$tmpFile'))
+`$image = [System.Drawing.Image]::FromStream(`$ms)
+`$data = New-Object System.Windows.Forms.DataObject
+`$data.SetData('GIF', `$false, (New-Object System.IO.MemoryStream(,[System.IO.File]::ReadAllBytes('$tmpFile'))))
+`$data.SetImage(`$image)
+[System.Windows.Forms.Clipboard]::SetDataObject(`$data, `$true)
+`$image.Dispose()
+`$ms.Dispose()
+"@
+
+    $proc = Start-Process powershell.exe -ArgumentList "-NoProfile -STA -ExecutionPolicy Bypass -Command `"$clipScript`"" -Wait -PassThru -WindowStyle Hidden
+    return $proc.ExitCode -eq 0
+}
+
 try {
     $msg = Read-NativeMessage
     if (-not $msg) {
@@ -67,12 +55,11 @@ try {
     }
 
     if ($msg.action -eq "copyGif" -and $msg.base64) {
-        $gifBytes = [Convert]::FromBase64String($msg.base64)
-        $copyErr = [GifClipboard]::CopyGif($gifBytes)
-        if ($copyErr) {
-            Send-NativeMessage @{ success = $false; error = $copyErr }
-        } else {
+        $ok = Copy-GifToClipboard $msg.base64
+        if ($ok) {
             Send-NativeMessage @{ success = $true }
+        } else {
+            Send-NativeMessage @{ success = $false; error = "Clipboard copy failed" }
         }
     } else {
         Send-NativeMessage @{ success = $false; error = "Unknown action" }

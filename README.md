@@ -10,8 +10,6 @@ Works with Chrome, Brave, Edge, and other Chromium-based browsers.
 
 Install from the [Chrome Web Store](https://chromewebstore.google.com/detail/one-click-copy-image/linegepjibpagogcacmjfcpclppgjgmm).
 
-Works on Chrome, Brave, Edge, and any Chromium-based browser.
-
 ## Usage
 
 1. Go to [Google Images](https://images.google.com) and search for something
@@ -20,6 +18,8 @@ Works on Chrome, Brave, Edge, and any Chromium-based browser.
 4. Click it — a green progress bar fills the button while it works
 5. The button turns solid green when the image is on your clipboard
 6. Paste anywhere (Cmd+V / Ctrl+V)
+
+**Alt+Click** the button to download the image to your Downloads folder instead of copying it.
 
 **For animated GIFs:** Without the optional helper below, GIFs are saved to your Downloads folder instead of copied to the clipboard. The button still turns green — check your Downloads.
 
@@ -30,7 +30,7 @@ By default, animated GIFs are downloaded because browsers can't copy them to the
 ### macOS
 
 1. Download [occi-gif-helper-macos.zip](https://github.com/Gabe-LS/One-Click-Copy-Image/releases/latest/download/occi-gif-helper-macos.zip) and unzip it (double-click the zip file)
-2. Open **Terminal** (search "Terminal" in Spotlight) (search "Terminal" in Spotlight)
+2. Open **Terminal** (search "Terminal" in Spotlight)
 3. Type `cd ` (with a space after it), then drag the unzipped folder from Finder into the Terminal window — this fills in the path. Press Enter.
 4. Run:
 

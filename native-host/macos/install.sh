@@ -6,7 +6,12 @@ INSTALL_DIR="$HOME/.occi"
 HELPER="$INSTALL_DIR/clipboard_helper.sh"
 REMOTE_URL="https://raw.githubusercontent.com/Gabe-LS/One-Click-Copy-Image/main/native-host/macos/clipboard_helper.sh"
 SCRIPT_DIR="$(cd "$(dirname "$0")" 2>/dev/null && pwd || echo "")"
-SOURCE="${SCRIPT_DIR:+$SCRIPT_DIR/clipboard_helper.sh}"
+# Only use local source if run from the repo (not via curl pipe where $0 is "bash")
+if [ -n "$SCRIPT_DIR" ] && [ "$SCRIPT_DIR" != "$(pwd)" ] && [ -f "$SCRIPT_DIR/clipboard_helper.sh" ]; then
+  SOURCE="$SCRIPT_DIR/clipboard_helper.sh"
+else
+  SOURCE=""
+fi
 
 BROWSERS=(
   "Google/Chrome:Chrome"
@@ -247,9 +252,14 @@ install() {
   fi
   chmod +x "$HELPER"
 
-  # Verify downloaded file is a valid shell script
+  # Verify downloaded/copied file is a valid helper script
   if ! head -1 "$HELPER" | grep -q '^#!/bin/bash'; then
-    echo "ERROR: Downloaded file is not a valid helper script. Aborting."
+    echo "ERROR: File is not a valid helper script (bad shebang). Aborting."
+    rm -f "$HELPER"
+    exit 1
+  fi
+  if ! grep -q 'send_msg' "$HELPER"; then
+    echo "ERROR: File appears truncated or corrupt. Aborting."
     rm -f "$HELPER"
     exit 1
   fi

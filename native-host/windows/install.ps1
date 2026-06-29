@@ -3,6 +3,9 @@ param(
     [switch]$Uninstall
 )
 
+$ErrorActionPreference = 'Stop'
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+
 $HostName = "com.occi.clipboard_helper"
 $InstallDir = [System.IO.Path]::GetFullPath("$env:LOCALAPPDATA\occi")
 $HostExe = "$InstallDir\clipboard_helper.exe"
@@ -234,9 +237,15 @@ function Do-Install {
     }
 
     $detectedBrowsers = @()
-    foreach ($browser in $BrowserRegPaths.Keys) {
-        $parent = Split-Path $BrowserRegPaths[$browser]
-        if (Test-Path $parent) {
+    $BrowserBaseKeys = @{
+        "Chrome"   = "HKCU:\Software\Google\Chrome"
+        "Brave"    = "HKCU:\Software\BraveSoftware\Brave-Browser"
+        "Edge"     = "HKCU:\Software\Microsoft\Edge"
+        "Vivaldi"  = "HKCU:\Software\Vivaldi"
+        "Chromium" = "HKCU:\Software\Chromium"
+    }
+    foreach ($browser in $BrowserBaseKeys.Keys) {
+        if (Test-Path $BrowserBaseKeys[$browser]) {
             $detectedBrowsers += $browser
         }
     }
@@ -291,19 +300,37 @@ function Do-Install {
         exit 1
     }
 
+    # Kill any running instance before overwriting
+    $runningProcs = Get-Process -Name "clipboard_helper" -ErrorAction SilentlyContinue
+    if ($runningProcs) {
+        Write-Host "  Stopping running helper process..."
+        $runningProcs | Stop-Process -Force -ErrorAction SilentlyContinue
+        Start-Sleep -Milliseconds 500
+    }
+
     Write-Host "  Compiling helper..."
-    $csc = Join-Path ([System.Runtime.InteropServices.RuntimeEnvironment]::GetRuntimeDirectory()) "csc.exe"
-    $cscArgs = "/nologo /out:`"$HostExe`" /r:System.Windows.Forms.dll /r:System.Drawing.dll `"$tmpCs`""
-    $compile = Start-Process $csc -ArgumentList $cscArgs -Wait -PassThru -WindowStyle Hidden
-    if ($compile.ExitCode -ne 0) {
-        Write-Host "  Compilation failed. Make sure .NET Framework is installed."
+    $csc = "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
+    if (-not (Test-Path $csc)) {
+        $csc = "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\csc.exe"
+    }
+    if (-not (Test-Path $csc)) {
+        Write-Host "  ERROR: C# compiler not found. .NET Framework 4.x is required."
         exit 1
     }
+    $cscLog = "$InstallDir\compile.log"
+    $cscArgs = "/nologo /out:`"$HostExe`" /r:System.Windows.Forms.dll /r:System.Drawing.dll `"$tmpCs`""
+    $compile = Start-Process $csc -ArgumentList $cscArgs -Wait -PassThru -WindowStyle Hidden -RedirectStandardOutput $cscLog -RedirectStandardError $cscLog
+    if ($compile.ExitCode -ne 0) {
+        Write-Host "  Compilation failed:"
+        if (Test-Path $cscLog) { Get-Content $cscLog | ForEach-Object { Write-Host "    $_" } }
+        exit 1
+    }
+    Remove-Item $cscLog -Force -ErrorAction SilentlyContinue
     Remove-Item $tmpCs -Force -ErrorAction SilentlyContinue
     Remove-Item "$InstallDir\clipboard_copy.exe" -Force -ErrorAction SilentlyContinue
     Write-Host "  Helper compiled"
 
-    Set-Content $Launcher "@echo off`n`"$HostExe`""
+    Set-Content $Launcher "@echo off`n`"$HostExe`"" -Encoding ASCII
     Write-Host "  Helper installed"
 
     $origins = @($allIds | ForEach-Object { "chrome-extension://$_/" })
@@ -320,10 +347,9 @@ function Do-Install {
     Set-Content $manifestFile $manifest -Encoding UTF8
 
     $installed = 0
-    foreach ($browser in $BrowserRegPaths.Keys) {
+    foreach ($browser in $detectedBrowsers) {
         $regPath = $BrowserRegPaths[$browser]
-        $parent = Split-Path $regPath
-        if (-not (Test-Path $parent)) { continue }
+        if (-not $regPath) { continue }
         Assert-ValidRegPath $regPath
         New-Item -Path $regPath -Force | Out-Null
         Set-ItemProperty -Path $regPath -Name "(Default)" -Value $manifestFile

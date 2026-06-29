@@ -1,10 +1,7 @@
 using System;
-using System.Collections.Specialized;
-using System.Drawing;
+using System.Diagnostics;
 using System.IO;
 using System.Text;
-using System.Threading;
-using System.Windows.Forms;
 
 class Program {
     static int Main() {
@@ -25,46 +22,30 @@ class Program {
             }
 
             byte[] gifBytes = Convert.FromBase64String(base64);
-            string gifPath = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "occi", "clipboard.gif");
+            string installDir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "occi");
+            string gifPath = Path.Combine(installDir, "clipboard.gif");
             File.WriteAllBytes(gifPath, gifBytes);
 
-            string error = CopyToClipboard(gifPath, gifBytes);
-            if (error != null) {
-                SendNativeMessage("{\"success\":false,\"error\":\"" + Escape(error) + "\"}");
-            } else {
+            string clipExe = Path.Combine(installDir, "clipboard_copy.exe");
+            var proc = Process.Start(new ProcessStartInfo {
+                FileName = clipExe,
+                Arguments = "\"" + gifPath + "\"",
+                WindowStyle = ProcessWindowStyle.Hidden,
+                CreateNoWindow = true
+            });
+            proc.WaitForExit();
+
+            if (proc.ExitCode == 0) {
                 SendNativeMessage("{\"success\":true}");
+            } else {
+                SendNativeMessage("{\"success\":false,\"error\":\"Clipboard copy failed\"}");
             }
             return 0;
         } catch (Exception ex) {
             SendNativeMessage("{\"success\":false,\"error\":\"" + Escape(ex.Message) + "\"}");
             return 1;
         }
-    }
-
-    static string CopyToClipboard(string gifPath, byte[] gifBytes) {
-        string error = null;
-        var thread = new Thread(() => {
-            try {
-                using (var ms = new MemoryStream(gifBytes))
-                using (var image = Image.FromStream(ms)) {
-                    var data = new DataObject();
-                    data.SetData("GIF", false, new MemoryStream(gifBytes));
-                    data.SetImage(image);
-                    var files = new StringCollection();
-                    files.Add(gifPath);
-                    data.SetFileDropList(files);
-                    Clipboard.SetDataObject(data, true);
-                }
-            } catch (Exception ex) {
-                error = ex.Message;
-            }
-        });
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-        thread.Join();
-        return error;
     }
 
     static byte[] ReadNativeMessage() {

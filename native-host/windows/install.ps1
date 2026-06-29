@@ -5,16 +5,13 @@ param(
 
 $HostName = "com.occi.clipboard_helper"
 $InstallDir = "$env:LOCALAPPDATA\occi"
-$Helper = "$InstallDir\clipboard_helper.ps1"
+$HostExe = "$InstallDir\clipboard_helper.exe"
+$HostCs = "$InstallDir\clipboard_helper.cs"
 $Launcher = "$InstallDir\clipboard_helper.bat"
 $RemoteBase = "https://raw.githubusercontent.com/Gabe-LS/One-Click-Copy-Image/main/native-host/windows"
-$RemoteUrl = "$RemoteBase/clipboard_helper.ps1"
-$RemoteCsUrl = "$RemoteBase/clipboard_copy.cs"
-$ClipExe = "$InstallDir\clipboard_copy.exe"
-$ClipCs = "$InstallDir\clipboard_copy.cs"
+$RemoteCsUrl = "$RemoteBase/clipboard_helper.cs"
 $ScriptDir = if ($MyInvocation.MyCommand.Path) { Split-Path -Parent $MyInvocation.MyCommand.Path } else { "" }
-$Source = if ($ScriptDir) { "$ScriptDir\clipboard_helper.ps1" } else { "" }
-$SourceCs = if ($ScriptDir) { "$ScriptDir\clipboard_copy.cs" } else { "" }
+$SourceCs = if ($ScriptDir) { "$ScriptDir\clipboard_helper.cs" } else { "" }
 
 $BrowserRegPaths = @{
     "Chrome"   = "HKCU:\Software\Google\Chrome\NativeMessagingHosts\$HostName"
@@ -191,12 +188,13 @@ function Do-Install {
     Write-Host ""
 
     New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null
-    if ($Source -and (Test-Path $Source)) {
-        Copy-Item $Source $Helper -Force
+
+    if ($SourceCs -and (Test-Path $SourceCs)) {
+        Copy-Item $SourceCs $HostCs -Force
     } else {
         Write-Host "  Downloading helper..."
         try {
-            Invoke-WebRequest -Uri $RemoteUrl -OutFile $Helper -UseBasicParsing
+            Invoke-WebRequest -Uri $RemoteCsUrl -OutFile $HostCs -UseBasicParsing
         } catch {
             Write-Host ""
             Write-Host "Download failed. Check your internet connection and try again."
@@ -204,31 +202,18 @@ function Do-Install {
         }
     }
 
-    if ($SourceCs -and (Test-Path $SourceCs)) {
-        Copy-Item $SourceCs $ClipCs -Force
-    } else {
-        Write-Host "  Downloading clipboard tool..."
-        try {
-            Invoke-WebRequest -Uri $RemoteCsUrl -OutFile $ClipCs -UseBasicParsing
-        } catch {
-            Write-Host ""
-            Write-Host "Download failed. Check your internet connection and try again."
-            exit 1
-        }
-    }
-
-    Write-Host "  Compiling clipboard tool..."
+    Write-Host "  Compiling helper..."
     $csc = Join-Path ([System.Runtime.InteropServices.RuntimeEnvironment]::GetRuntimeDirectory()) "csc.exe"
-    $cscArgs = "/nologo /out:`"$ClipExe`" /r:System.Windows.Forms.dll /r:System.Drawing.dll `"$ClipCs`""
+    $cscArgs = "/nologo /out:`"$HostExe`" /r:System.Windows.Forms.dll /r:System.Drawing.dll `"$HostCs`""
     $compile = Start-Process $csc -ArgumentList $cscArgs -Wait -PassThru -WindowStyle Hidden
     if ($compile.ExitCode -ne 0) {
-        Write-Host "  Compilation failed. Falling back to PowerShell mode (slower)."
-    } else {
-        Remove-Item $ClipCs -Force -ErrorAction SilentlyContinue
-        Write-Host "  Clipboard tool compiled"
+        Write-Host "  Compilation failed. Make sure .NET Framework is installed."
+        exit 1
     }
+    Remove-Item $HostCs -Force -ErrorAction SilentlyContinue
+    Write-Host "  Helper compiled"
 
-    Set-Content $Launcher "@echo off`npowershell.exe -NoProfile -STA -ExecutionPolicy Bypass -File `"$Helper`""
+    Set-Content $Launcher "@echo off`n`"$HostExe`""
     Write-Host "  Helper installed"
 
     $origins = @($allIds | ForEach-Object { "chrome-extension://$_/" })

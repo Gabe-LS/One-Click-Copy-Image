@@ -8,7 +8,7 @@ Works with Chrome, Brave, Edge, and other Chromium-based browsers.
 
 ## Installation
 
-Install from the [Chrome Web Store](https://chrome.google.com/webstore) (link coming soon).
+Install from the [Chrome Web Store](https://chromewebstore.google.com/detail/one-click-copy-image/linegepjibpagogcacmjfcpclppgjgmm).
 
 Works on Chrome, Brave, Edge, and any Chromium-based browser.
 
@@ -35,7 +35,7 @@ By default, animated GIFs are downloaded because browsers can't copy them to the
 4. Run:
 
 ```bash
-./install.sh YOUR_EXTENSION_ID
+./install.sh linegepjibpagogcacmjfcpclppgjgmm
 ```
 
 No admin password needed.
@@ -48,17 +48,12 @@ No admin password needed.
 4. Run:
 
 ```powershell
-.\install.ps1 -ExtensionId YOUR_EXTENSION_ID
+.\install.ps1 -ExtensionId linegepjibpagogcacmjfcpclppgjgmm
 ```
 
 No admin needed.
 
-### How to find your extension ID
-
-1. Open `chrome://extensions` (or `brave://extensions`, `edge://extensions`)
-2. Find **One-Click Copy Image** in the list
-3. The **ID** is the long string of lowercase letters shown under the extension name (e.g. `abcdefghijklmnopqrstuvwxyzabcdef`)
-4. Copy it and paste it in place of `YOUR_EXTENSION_ID` in the install command above
+> **Note:** The extension ID above (`linegepjibpagogcacmjfcpclppgjgmm`) is for the Chrome Web Store version. If you loaded the extension unpacked in developer mode, your ID will be different — find it at `chrome://extensions`.
 
 After installing the helper, **restart your browser** (fully quit and reopen) for it to take effect.
 

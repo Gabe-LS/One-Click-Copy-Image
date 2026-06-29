@@ -25,7 +25,7 @@ Install from the [Chrome Web Store](https://chromewebstore.google.com/detail/one
 
 ## Animated GIF clipboard support (optional)
 
-By default, animated GIFs are downloaded because browsers can't copy them to the clipboard natively. To enable true clipboard copy (so you can paste animated GIFs directly), install a small helper script.
+By default, animated GIFs are downloaded because browsers can't copy them to the clipboard natively. To enable true clipboard copy (so you can paste animated GIFs directly), install a small helper.
 
 ### macOS
 
@@ -43,11 +43,11 @@ Open **PowerShell** and run:
 irm https://raw.githubusercontent.com/Gabe-LS/One-Click-Copy-Image/main/native-host/windows/install.ps1 -OutFile $env:TEMP\occi-install.ps1; powershell -ExecutionPolicy Bypass -File $env:TEMP\occi-install.ps1 -ExtensionId linegepjibpagogcacmjfcpclppgjgmm; Remove-Item $env:TEMP\occi-install.ps1
 ```
 
-No admin needed on either platform.
+No admin needed on either platform. On Windows, the helper is compiled from source during install using the built-in .NET compiler.
 
 > **Note:** The extension ID above (`linegepjibpagogcacmjfcpclppgjgmm`) is for the Chrome Web Store version. If you loaded the extension unpacked in developer mode, your ID will be different — find it at `chrome://extensions`.
 
-After installing the helper, **restart your browser** (fully quit and reopen) for it to take effect.
+After installing, **restart your browser** (fully quit and reopen) to register the helper.
 
 ## Uninstall
 

@@ -126,7 +126,7 @@ function Do-Install {
     Write-Host ""
     Write-Host "The helper:"
     Write-Host "  - Runs only when you click Copy on a GIF"
-    Write-Host "  - Uses only built-in Windows tools (no extra software)"
+    Write-Host "  - Compiled from source during install (no third-party downloads)"
     Write-Host "  - Stays in your user folder (no admin needed)"
     Write-Host "  - Is easy to remove (see instructions at the end)"
     Write-Host ""
@@ -167,7 +167,7 @@ function Do-Install {
     Write-Host ""
     Write-Host "Ready to install. Here's what will happen:"
     Write-Host ""
-    Write-Host "  1. Copy the helper script to $InstallDir"
+    Write-Host "  1. Compile and install the helper to $InstallDir"
     Write-Host "  2. Register it with: $($detectedBrowsers -join ', ')"
     if ($allIds.Count -gt 1) {
         Write-Host "  3. Allowed extension IDs:"

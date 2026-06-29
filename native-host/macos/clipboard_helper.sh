@@ -22,7 +22,7 @@ send_msg() {
 MSG=$(read_msg)
 [ -z "$MSG" ] && { send_msg '{"success":false,"error":"no input"}'; exit 1; }
 
-B64=$(printf '%s' "$MSG" | /usr/bin/python3 -c "import sys,json;print(json.load(sys.stdin).get('base64',''))" 2>/dev/null)
+B64=$(printf '%s' "$MSG" | sed -n 's/.*"base64":"\([^"]*\)".*/\1/p')
 [ -z "$B64" ] && { send_msg '{"success":false,"error":"no base64"}'; exit 1; }
 
 GIFFILE="$HOME/.occi/clipboard.gif"

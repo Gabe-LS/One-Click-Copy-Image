@@ -18,6 +18,52 @@ BROWSERS=(
   "Chromium:Chromium"
 )
 
+# --- Safety: validate all paths before any write/delete ---
+
+validate_install_dir() {
+  if [ -z "$INSTALL_DIR" ] || [ "$INSTALL_DIR" = "/" ] || [ "$INSTALL_DIR" = "$HOME" ]; then
+    echo "FATAL: install directory path is invalid: '$INSTALL_DIR'"
+    exit 1
+  fi
+  case "$INSTALL_DIR" in
+    "$HOME"/.occi) ;; # expected
+    *) echo "FATAL: install directory is not under ~/.occi: '$INSTALL_DIR'"; exit 1 ;;
+  esac
+}
+
+validate_manifest_path() {
+  local path="$1"
+  case "$path" in
+    "$HOME/Library/Application Support/"*/NativeMessagingHosts/"$HOST_NAME".json) ;; # expected
+    *) echo "FATAL: manifest path is outside expected location: '$path'"; exit 1 ;;
+  esac
+}
+
+verify_our_manifest() {
+  local path="$1"
+  if [ -f "$path" ]; then
+    if ! grep -q "$HOST_NAME" "$path" 2>/dev/null; then
+      echo "WARNING: '$path' does not appear to belong to us. Skipping."
+      return 1
+    fi
+  fi
+  return 0
+}
+
+verify_our_install_dir() {
+  if [ ! -d "$INSTALL_DIR" ]; then
+    return 1
+  fi
+  # Must contain at least one of our known files
+  if [ -f "$INSTALL_DIR/clipboard_helper.sh" ] || \
+     [ -f "$INSTALL_DIR/$HOST_NAME.json" ] || \
+     [ -f "$INSTALL_DIR/clipboard.gif" ]; then
+    return 0
+  fi
+  echo "WARNING: '$INSTALL_DIR' does not contain expected helper files. Skipping removal."
+  return 1
+}
+
 confirm() {
   local prompt="$1"
   read -rp "$prompt [y/N] " answer
@@ -35,6 +81,8 @@ get_existing_ids() {
 }
 
 uninstall() {
+  validate_install_dir
+
   echo ""
   echo "One-Click Copy Image — Uninstall GIF Helper"
   echo "---------------------------------------------"
@@ -50,13 +98,13 @@ uninstall() {
     local label="${entry##*:}"
     local manifest="$HOME/Library/Application Support/$dir_suffix/NativeMessagingHosts/$HOST_NAME.json"
     if [ -f "$manifest" ]; then
-      echo "  - $label browser registration"
+      echo "  - $manifest"
       found=1
     fi
   done
 
   if [ -d "$INSTALL_DIR" ]; then
-    echo "  - Helper files in $INSTALL_DIR"
+    echo "  - $INSTALL_DIR/ (entire directory)"
     found=1
   fi
 
@@ -83,12 +131,15 @@ uninstall() {
     local label="${entry##*:}"
     local manifest="$HOME/Library/Application Support/$dir_suffix/NativeMessagingHosts/$HOST_NAME.json"
     if [ -f "$manifest" ]; then
-      rm -f "$manifest"
-      echo "  Removed $label registration"
+      validate_manifest_path "$manifest"
+      if verify_our_manifest "$manifest"; then
+        rm -f "$manifest"
+        echo "  Removed $manifest"
+      fi
     fi
   done
 
-  if [ -d "$INSTALL_DIR" ]; then
+  if verify_our_install_dir; then
     rm -rf "$INSTALL_DIR"
     echo "  Removed $INSTALL_DIR"
   fi
@@ -98,6 +149,8 @@ uninstall() {
 }
 
 install() {
+  validate_install_dir
+
   local ext_id="${1:-}"
 
   echo ""
@@ -155,14 +208,17 @@ install() {
   echo ""
   echo "Ready to install. Here's what will happen:"
   echo ""
-  echo "  1. Copy the helper script to $INSTALL_DIR"
-  echo "  2. Register it with: ${detected_browsers[*]:-Chrome}"
+  echo "  1. Install helper to: $INSTALL_DIR/"
+  echo "  2. Write manifests for: ${detected_browsers[*]:-Chrome}"
+  echo "     (in ~/Library/Application Support/<browser>/NativeMessagingHosts/)"
   if [ ${#all_ids[@]} -gt 1 ]; then
     echo "  3. Allowed extension IDs:"
     for id in "${all_ids[@]}"; do
       echo "     - $id"
     done
   fi
+  echo ""
+  echo "  Only these locations will be modified. Nothing else on your system is touched."
   echo ""
 
   if ! confirm "Continue?"; then
@@ -180,6 +236,13 @@ install() {
     curl -fsSL "$REMOTE_URL" -o "$HELPER" || { echo ""; echo "Download failed. Check your internet connection and try again."; exit 1; }
   fi
   chmod +x "$HELPER"
+
+  # Verify downloaded file is a valid shell script
+  if ! head -1 "$HELPER" | grep -q '^#!/bin/bash'; then
+    echo "ERROR: Downloaded file is not a valid helper script. Aborting."
+    rm -f "$HELPER"
+    exit 1
+  fi
   echo "  Helper installed"
 
   local origins=""
@@ -211,8 +274,10 @@ install() {
 
     if [ -d "$browser_dir" ]; then
       local manifest_dir="$browser_dir/NativeMessagingHosts"
+      local manifest_path="$manifest_dir/$HOST_NAME.json"
+      validate_manifest_path "$manifest_path"
       mkdir -p "$manifest_dir"
-      echo "$manifest" > "$manifest_dir/$HOST_NAME.json"
+      echo "$manifest" > "$manifest_path"
       echo "  Registered for $label"
       installed=$((installed + 1))
     fi
@@ -220,8 +285,10 @@ install() {
 
   if [ "$installed" -eq 0 ]; then
     local manifest_dir="$HOME/Library/Application Support/Google/Chrome/NativeMessagingHosts"
+    local manifest_path="$manifest_dir/$HOST_NAME.json"
+    validate_manifest_path "$manifest_path"
     mkdir -p "$manifest_dir"
-    echo "$manifest" > "$manifest_dir/$HOST_NAME.json"
+    echo "$manifest" > "$manifest_path"
     echo "  Registered for Chrome"
   fi
 

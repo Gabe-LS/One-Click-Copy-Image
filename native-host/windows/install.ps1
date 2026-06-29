@@ -24,6 +24,64 @@ $BrowserManifestDirs = @{
     "Edge"   = "$env:LOCALAPPDATA\Microsoft\Edge\User Data\NativeMessagingHosts"
 }
 
+# --- Safety: validate paths and content before any write/delete ---
+
+function Assert-ValidInstallDir {
+    if (-not $InstallDir -or $InstallDir -eq "\" -or $InstallDir -eq $env:LOCALAPPDATA) {
+        Write-Host "FATAL: Install directory path is invalid: '$InstallDir'"
+        exit 1
+    }
+    $expected = Join-Path $env:LOCALAPPDATA "occi"
+    if ($InstallDir -ne $expected) {
+        Write-Host "FATAL: Install directory is not the expected path: '$InstallDir'"
+        exit 1
+    }
+}
+
+function Assert-ValidManifestPath($path) {
+    if ($path -notmatch [regex]::Escape($env:LOCALAPPDATA) -or $path -notmatch "$([regex]::Escape($HostName))\.json$") {
+        Write-Host "FATAL: Manifest path is outside expected location: '$path'"
+        exit 1
+    }
+}
+
+function Assert-ValidRegPath($regPath) {
+    if ($regPath -notmatch "^HKCU:\\Software\\" -or $regPath -notmatch [regex]::Escape($HostName)) {
+        Write-Host "FATAL: Registry path is outside expected location: '$regPath'"
+        exit 1
+    }
+}
+
+function Test-OurManifest($path) {
+    if (Test-Path $path) {
+        $content = Get-Content $path -Raw -ErrorAction SilentlyContinue
+        if ($content -and $content -match $HostName) { return $true }
+        Write-Host "  WARNING: '$path' does not belong to us. Skipping."
+        return $false
+    }
+    return $false
+}
+
+function Test-OurInstallDir {
+    if (-not (Test-Path $InstallDir)) { return $false }
+    # Must contain at least one of our known files
+    if ((Test-Path "$InstallDir\clipboard_helper.exe") -or
+        (Test-Path "$InstallDir\clipboard_helper.bat") -or
+        (Test-Path "$InstallDir\$HostName.json")) {
+        return $true
+    }
+    Write-Host "  WARNING: '$InstallDir' does not contain expected helper files. Skipping removal."
+    return $false
+}
+
+function Test-OurRegKey($regPath) {
+    if (-not (Test-Path $regPath)) { return $false }
+    $val = (Get-ItemProperty $regPath -ErrorAction SilentlyContinue).'(default)'
+    if ($val -and $val -match $HostName) { return $true }
+    Write-Host "  WARNING: Registry key '$regPath' does not point to our manifest. Skipping."
+    return $false
+}
+
 function Confirm-Action($prompt) {
     $answer = Read-Host "$prompt [y/N]"
     return $answer -match '^[yY]$'
@@ -40,6 +98,8 @@ function Get-ExistingIds {
 }
 
 function Do-Uninstall {
+    Assert-ValidInstallDir
+
     Write-Host ""
     Write-Host "One-Click Copy Image - Uninstall GIF Helper"
     Write-Host "--------------------------------------------"
@@ -51,8 +111,9 @@ function Do-Uninstall {
     $found = $false
 
     foreach ($browser in $BrowserRegPaths.Keys) {
-        if (Test-Path $BrowserRegPaths[$browser]) {
-            Write-Host "  - $browser browser registration"
+        $regPath = $BrowserRegPaths[$browser]
+        if (Test-Path $regPath) {
+            Write-Host "  - Registry: $regPath"
             $found = $true
         }
     }
@@ -60,13 +121,13 @@ function Do-Uninstall {
     foreach ($browser in $BrowserManifestDirs.Keys) {
         $f = "$($BrowserManifestDirs[$browser])\$HostName.json"
         if (Test-Path $f) {
-            Write-Host "  - $browser manifest file"
+            Write-Host "  - File: $f"
             $found = $true
         }
     }
 
     if (Test-Path $InstallDir) {
-        Write-Host "  - Helper files in $InstallDir"
+        Write-Host "  - Directory: $InstallDir\ (entire directory)"
         $found = $true
     }
 
@@ -90,23 +151,25 @@ function Do-Uninstall {
 
     foreach ($browser in $BrowserRegPaths.Keys) {
         $regPath = $BrowserRegPaths[$browser]
-        if (Test-Path $regPath) {
+        Assert-ValidRegPath $regPath
+        if (Test-OurRegKey $regPath) {
             Remove-Item $regPath -Force
-            Write-Host "  Removed $browser registration"
+            Write-Host "  Removed registry: $regPath"
         }
     }
 
     foreach ($browser in $BrowserManifestDirs.Keys) {
         $f = "$($BrowserManifestDirs[$browser])\$HostName.json"
-        if (Test-Path $f) {
+        Assert-ValidManifestPath $f
+        if (Test-OurManifest $f) {
             Remove-Item $f -Force
-            Write-Host "  Removed $browser manifest"
+            Write-Host "  Removed file: $f"
         }
     }
 
-    if (Test-Path $InstallDir) {
+    if (Test-OurInstallDir) {
         Remove-Item $InstallDir -Recurse -Force
-        Write-Host "  Removed $InstallDir"
+        Write-Host "  Removed directory: $InstallDir"
     }
 
     Write-Host ""
@@ -115,6 +178,8 @@ function Do-Uninstall {
 
 function Do-Install {
     param([string]$Id)
+
+    Assert-ValidInstallDir
 
     Write-Host ""
     Write-Host "One-Click Copy Image - GIF Helper Setup"
@@ -167,14 +232,17 @@ function Do-Install {
     Write-Host ""
     Write-Host "Ready to install. Here's what will happen:"
     Write-Host ""
-    Write-Host "  1. Compile and install the helper to $InstallDir"
-    Write-Host "  2. Register it with: $($detectedBrowsers -join ', ')"
+    Write-Host "  1. Compile and install helper to: $InstallDir\"
+    Write-Host "  2. Register with: $($detectedBrowsers -join ', ')"
+    Write-Host "     (registry under HKCU:\Software\<browser>\NativeMessagingHosts\)"
     if ($allIds.Count -gt 1) {
         Write-Host "  3. Allowed extension IDs:"
         foreach ($id in $allIds) {
             Write-Host "     - $id"
         }
     }
+    Write-Host ""
+    Write-Host "  Only these locations will be modified. Nothing else on your system is touched."
     Write-Host ""
 
     if (-not (Confirm-Action "Continue?")) {
@@ -192,7 +260,7 @@ function Do-Install {
     if ($localFile -and (Test-Path $localFile)) {
         Copy-Item $localFile $tmpCs -Force
     } else {
-        Write-Host "  Downloading helper..."
+        Write-Host "  Downloading source..."
         try {
             Invoke-WebRequest -Uri "$RemoteBase/$csFile" -OutFile $tmpCs -UseBasicParsing
         } catch {
@@ -200,6 +268,14 @@ function Do-Install {
             Write-Host "Download failed. Check your internet connection and try again."
             exit 1
         }
+    }
+
+    # Verify downloaded file is valid C# source
+    $firstLine = Get-Content $tmpCs -TotalCount 1
+    if ($firstLine -notmatch "^using ") {
+        Write-Host "  ERROR: Downloaded file is not valid C# source. Aborting."
+        Remove-Item $tmpCs -Force -ErrorAction SilentlyContinue
+        exit 1
     }
 
     Write-Host "  Compiling helper..."
@@ -235,6 +311,7 @@ function Do-Install {
         $regPath = $BrowserRegPaths[$browser]
         $parent = Split-Path $regPath
         if (-not (Test-Path $parent)) { continue }
+        Assert-ValidRegPath $regPath
         New-Item -Path $regPath -Force | Out-Null
         Set-ItemProperty -Path $regPath -Name "(Default)" -Value $manifestFile
         Write-Host "  Registered for $browser"
@@ -244,13 +321,16 @@ function Do-Install {
     foreach ($browser in $BrowserManifestDirs.Keys) {
         $dir = $BrowserManifestDirs[$browser]
         if (Test-Path (Split-Path $dir)) {
+            $manifestPath = "$dir\$HostName.json"
+            Assert-ValidManifestPath $manifestPath
             New-Item -ItemType Directory -Path $dir -Force | Out-Null
-            Set-Content "$dir\$HostName.json" $manifest -Encoding UTF8
+            Set-Content $manifestPath $manifest -Encoding UTF8
         }
     }
 
     if ($installed -eq 0) {
         $regPath = "HKCU:\Software\Google\Chrome\NativeMessagingHosts\$HostName"
+        Assert-ValidRegPath $regPath
         New-Item -Path $regPath -Force | Out-Null
         Set-ItemProperty -Path $regPath -Name "(Default)" -Value $manifestFile
         Write-Host "  Registered for Chrome"

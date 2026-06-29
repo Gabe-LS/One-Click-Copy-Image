@@ -317,15 +317,17 @@ function Do-Install {
         Write-Host "  ERROR: C# compiler not found. .NET Framework 4.x is required."
         exit 1
     }
-    $cscLog = "$InstallDir\compile.log"
+    $cscOut = "$InstallDir\compile_out.log"
+    $cscErr = "$InstallDir\compile_err.log"
     $cscArgs = "/nologo /out:`"$HostExe`" /r:System.Windows.Forms.dll /r:System.Drawing.dll `"$tmpCs`""
-    $compile = Start-Process $csc -ArgumentList $cscArgs -Wait -PassThru -WindowStyle Hidden -RedirectStandardOutput $cscLog -RedirectStandardError $cscLog
+    $compile = Start-Process $csc -ArgumentList $cscArgs -Wait -PassThru -WindowStyle Hidden -RedirectStandardOutput $cscOut -RedirectStandardError $cscErr
     if ($compile.ExitCode -ne 0) {
         Write-Host "  Compilation failed:"
-        if (Test-Path $cscLog) { Get-Content $cscLog | ForEach-Object { Write-Host "    $_" } }
+        if (Test-Path $cscErr) { Get-Content $cscErr | ForEach-Object { Write-Host "    $_" } }
+        if (Test-Path $cscOut) { Get-Content $cscOut | ForEach-Object { Write-Host "    $_" } }
         exit 1
     }
-    Remove-Item $cscLog -Force -ErrorAction SilentlyContinue
+    Remove-Item $cscOut, $cscErr -Force -ErrorAction SilentlyContinue
     Remove-Item $tmpCs -Force -ErrorAction SilentlyContinue
     Remove-Item "$InstallDir\clipboard_copy.exe" -Force -ErrorAction SilentlyContinue
     Write-Host "  Helper compiled"

@@ -111,13 +111,31 @@
 
   // --- At click time, find the original (non-proxy) image URL ---
 
-  function findBestImageSrc(btn) {
+  function findPanelScope(btn) {
     let scope = btn.parentElement;
     for (let i = 0; i < 4 && scope; i++) {
       if (scope.hasAttribute?.("data-viewer-type")) break;
       scope = scope.parentElement;
     }
-    if (!scope) scope = btn.parentElement;
+    return scope || btn.parentElement;
+  }
+
+  // Google only has a thumbnail for Instagram posts. If the panel links to
+  // one, return its shortcode so the background can resolve the full image.
+  function findInstagramShortcode(btn) {
+    for (const a of findPanelScope(btn).querySelectorAll("a[href]")) {
+      try {
+        const u = new URL(a.href);
+        if (u.hostname !== "www.instagram.com" && u.hostname !== "instagram.com") continue;
+        const m = u.pathname.match(/^\/(?:[^/]+\/)?(?:p|reels?|tv)\/([A-Za-z0-9_-]+)/);
+        if (m) return m[1];
+      } catch {}
+    }
+    return null;
+  }
+
+  function findBestImageSrc(btn) {
+    const scope = findPanelScope(btn);
 
     let bestReal = null;
     let bestProxy = null;
@@ -202,6 +220,7 @@
     const btn = e.currentTarget;
     const img = btn._targetImg;
     const src = findBestImageSrc(btn);
+    const igShortcode = findInstagramShortcode(btn);
 
     if (!src) {
       showButtonState(btn, "error");
@@ -212,7 +231,7 @@
     if (e.altKey) {
       showButtonState(btn, "loading");
       try {
-        const response = await chrome.runtime.sendMessage({ action: "downloadImage", src });
+        const response = await chrome.runtime.sendMessage({ action: "downloadImage", src, igShortcode });
         showButtonState(btn, response?.success ? "success" : "error");
       } catch (err) {
         console.error("[One-Click Copy Image]", err);
@@ -234,7 +253,7 @@
         } catch {}
       }
 
-      const response = await chrome.runtime.sendMessage({ action: "fetchImage", src });
+      const response = await chrome.runtime.sendMessage({ action: "fetchImage", src, igShortcode });
 
       if (!response?.success) throw new Error(response?.error || "Fetch failed");
 

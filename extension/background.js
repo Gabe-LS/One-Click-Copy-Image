@@ -16,10 +16,65 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 const handlers = {
-  fetchImage: (msg) => fetchImage(msg.src),
-  downloadImage: (msg) => downloadImage(msg.src),
+  fetchImage: (msg) => withHiResSource(msg, fetchImage),
+  downloadImage: (msg) => withHiResSource(msg, downloadImage),
   downloadGif: (msg) => downloadGif(msg.src, msg.filename),
 };
+
+// Try a higher-resolution source first (currently: Instagram posts), and fall
+// back to the URL the content script found if resolving or fetching fails.
+async function withHiResSource(msg, fn) {
+  const hiRes = msg.igShortcode ? await resolveInstagramImage(msg.igShortcode) : null;
+  if (hiRes) {
+    try {
+      const result = await fn(hiRes);
+      if (result?.success) return result;
+    } catch {}
+  }
+  return fn(msg.src);
+}
+
+const IG_EMBED_TIMEOUT_MS = 10000;
+const IG_CDN_HOST = /(^|\.)(cdninstagram\.com|fbcdn\.net)$/;
+
+// Instagram's public embed page lists the post image in a srcset (up to the
+// stored resolution, typically 1080–1440px wide, uncropped).
+async function resolveInstagramImage(shortcode) {
+  if (!/^[A-Za-z0-9_-]{5,64}$/.test(shortcode)) return null;
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), IG_EMBED_TIMEOUT_MS);
+
+  try {
+    const res = await fetch(`https://www.instagram.com/p/${shortcode}/embed/`, {
+      signal: controller.signal,
+      credentials: "omit",
+    });
+    if (!res.ok) return null;
+
+    const tag = (await res.text()).match(/<img[^>]*EmbeddedMediaImage[^>]*>/)?.[0];
+    if (!tag) return null;
+
+    const decode = (s) => s.replace(/&amp;/g, "&");
+    let best = null;
+    let bestWidth = 0;
+
+    const srcset = tag.match(/srcset="([^"]*)"/)?.[1];
+    if (srcset) {
+      for (const [, url, w] of decode(srcset).matchAll(/(?:^|,)\s*(\S+)\s+(\d+)w/g)) {
+        if (+w > bestWidth) { best = url; bestWidth = +w; }
+      }
+    }
+    best ??= decode(tag.match(/\ssrc="([^"]*)"/)?.[1] || "") || null;
+    if (!best) return null;
+
+    return IG_CDN_HOST.test(new URL(best).hostname) ? best : null;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 async function fetchImage(src) {
   const controller = new AbortController();

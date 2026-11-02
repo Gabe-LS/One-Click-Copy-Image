@@ -1,6 +1,6 @@
 # Privacy Policy — One-Click Copy Image
 
-**Last updated:** June 2026
+**Last updated:** November 2026
 
 ## Data Collection
 
@@ -11,8 +11,9 @@ One-Click Copy Image does **not** collect, store, transmit, or share any persona
 The extension operates exclusively on Google Images search pages. It reads:
 
 - **Image URLs** — from the currently displayed preview panel, to fetch and copy the image to your clipboard.
+- **Instagram post links** — when the preview is an Instagram post, the extension reads the post's ID from the panel's link and loads that post's public embed page from instagram.com to find the full-resolution image. This request is sent without your Instagram cookies or login.
 
-This information is used only to copy the image locally. It is never sent to any server, analytics service, or third party.
+This information is used only to copy the image locally. It is never sent to any analytics service or third party; the only requests made are to the servers hosting the image you copy (and instagram.com, as described above).
 
 ## Permissions
 
@@ -29,7 +30,7 @@ The optional GIF clipboard helper is a local script that runs on your computer. 
 
 ## Third parties
 
-The extension does not communicate with any external server. It does not include analytics, telemetry, or tracking of any kind.
+The extension does not communicate with any developer-run or analytics server. Its only network requests fetch the image you chose to copy from the site hosting it. It does not include analytics, telemetry, or tracking of any kind.
 
 ## Contact
 

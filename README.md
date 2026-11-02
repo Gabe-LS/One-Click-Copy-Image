@@ -21,6 +21,8 @@ Install from the [Chrome Web Store](https://chromewebstore.google.com/detail/one
 
 **Alt+Click** the button to download the image to your Downloads folder instead of copying it.
 
+**Instagram results:** Google only has a small thumbnail for Instagram posts, so the extension fetches the full-resolution image (typically 1080–1440px wide) from the post's public embed page instead.
+
 **For animated GIFs:** Without the optional helper below, GIFs are saved to your Downloads folder instead of copied to the clipboard. The button still turns green — check your Downloads.
 
 ## Animated GIF clipboard support (optional)

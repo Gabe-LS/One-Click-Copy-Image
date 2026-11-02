@@ -132,7 +132,9 @@
       }
     }
 
-    return bestReal || bestProxy || btn._targetImg?.src || null;
+    // Prefer the preview image itself over other proxies in the panel — the
+    // first proxy in DOM order is often the source site's favicon.
+    return bestReal || btn._targetImg?.src || bestProxy || null;
   }
 
   // --- Stale button cleanup ---
